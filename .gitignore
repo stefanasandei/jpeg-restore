@@ -1,0 +1,4 @@
+outputs/
+*.pth
+*.pt
+__pycache__
