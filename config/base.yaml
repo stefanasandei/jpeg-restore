@@ -1,4 +1,4 @@
-db:
-  driver: mysql
-  user: omry
-  pass: secret
+dataset:
+  df2k:
+    train_dir: /mnt/sda3/Documents/Datasets/DF2K/DF2K_train_HR
+    val_dir: /mnt/sda3/Documents/Datasets/DF2K/DF2K_valid_HR
