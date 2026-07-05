@@ -2,3 +2,4 @@ outputs/
 *.pth
 *.pt
 __pycache__
+wandb

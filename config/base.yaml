@@ -2,3 +2,17 @@ dataset:
   df2k:
     train_dir: /mnt/sda3/Documents/Datasets/DF2K/DF2K_train_HR
     val_dir: /mnt/sda3/Documents/Datasets/DF2K/DF2K_valid_HR
+
+model: fbcnn
+
+train:
+  epochs: 100
+  lr: 3e-4
+  batch_size: 32
+  scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    milestones: [10, 30, 60, 80]
+    gamma: 0.5
+
+eval:
+  checkpoint: ""

@@ -1,9 +1,21 @@
 import os
+import random
 from PIL import Image
 
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms.v2 as v2
 import torch
+
+from utils import jpeg_compress
+
+
+class RandomJPEG:
+    def __init__(self, quality_range=(10, 95)):
+        self.low, self.high = quality_range
+
+    def __call__(self, img):
+        q = random.randint(self.low, self.high)
+        return jpeg_compress(img, q), 1.0 - q / 100.0
 
 
 class DF2KDataset(Dataset):
@@ -20,10 +32,9 @@ class DF2KDataset(Dataset):
                 v2.RandomHorizontalFlip(),
             ])
         else:
-            # to be fixed
             self.preprocess = v2.CenterCrop(128)
 
-        self.compress = v2.JPEG((5, 70))
+        self.compress = RandomJPEG((10, 95) if train else (30, 30))
         self.normalize = v2.Compose([
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
@@ -34,11 +45,12 @@ class DF2KDataset(Dataset):
 
         img = Image.open(path)
         img = self.preprocess(img)
-        compressed = self.compress(img)
+        compressed, q_target = self.compress(img)
 
         return (
             self.normalize(compressed),
             self.normalize(img),
+            torch.tensor([q_target], dtype=torch.float32),
         )
 
     def __len__(self):
