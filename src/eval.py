@@ -10,6 +10,7 @@ import torch
 import torchvision.transforms.v2 as v2
 from torchmetrics.functional.image import peak_signal_noise_ratio
 from torchmetrics.functional.image import structural_similarity_index_measure
+from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from models import MODELS
 from utils import jpeg_compress
@@ -36,18 +37,22 @@ def main(cfg: DictConfig) -> None:
         print("checkpoint: none (baseline JPEG)")
         model = None
 
-    images = sorted(p for p in Path(val_dir).iterdir() if p.suffix in IMAGE_EXTS)
+    glob_pattern = ds_cfg.get("glob", "*")
+    images = sorted(p for p in Path(val_dir).glob(glob_pattern) if p.suffix in IMAGE_EXTS)
 
     normalize = v2.Compose([
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
     ])
 
-    results = {qf: {"psnr": [], "ssim": []} for qf in QUALITY_FACTORS}
+    lpips_metric = LearnedPerceptualImagePatchSimilarity(normalize=True).to(device)
+
+    results = {qf: {"psnr": [], "ssim": [], "lpips": []} for qf in QUALITY_FACTORS}
 
     for img_path in tqdm(images, desc="eval"):
         clean = Image.open(img_path)
         clean_tensor = normalize(clean).to(device)
+        clean_tensor_batch = clean_tensor.unsqueeze(0)
 
         for qf in QUALITY_FACTORS:
             compressed = jpeg_compress(clean, qf)
@@ -59,16 +64,19 @@ def main(cfg: DictConfig) -> None:
             else:
                 pred = compressed_tensor
 
-            psnr = peak_signal_noise_ratio(pred, clean_tensor.unsqueeze(0), data_range=1.0).item()
-            ssim = structural_similarity_index_measure(pred, clean_tensor.unsqueeze(0), data_range=1.0).item()
+            psnr = peak_signal_noise_ratio(pred, clean_tensor_batch, data_range=1.0).item()
+            ssim = structural_similarity_index_measure(pred, clean_tensor_batch, data_range=1.0).item()
+            lpips = lpips_metric(pred, clean_tensor_batch).item()
 
             results[qf]["psnr"].append(psnr)
             results[qf]["ssim"].append(ssim)
+            results[qf]["lpips"].append(lpips)
 
     df = pd.DataFrame({
         "QF": QUALITY_FACTORS,
         "PSNR": [np.mean(results[qf]["psnr"]) for qf in QUALITY_FACTORS],
         "SSIM": [np.mean(results[qf]["ssim"]) for qf in QUALITY_FACTORS],
+        "LPIPS": [np.mean(results[qf]["lpips"]) for qf in QUALITY_FACTORS],
     })
     print(f"\n{ds_name}")
     print(df)

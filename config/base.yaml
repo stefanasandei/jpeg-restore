@@ -4,6 +4,9 @@ dataset:
     val_dir: /mnt/sda3/Documents/Datasets/DF2K/DF2K_valid_HR
   bsds500:
     val_dir: /mnt/sda3/Documents/Datasets/BSDS500/images/test
+  urban100:
+    val_dir: /mnt/sda3/Documents/Datasets/Urban100
+    glob: "**/*_HR.png"
 
 model: fbcnn
 
@@ -17,5 +20,5 @@ train:
     gamma: 0.5
 
 eval:
-  dataset: bsds500
+  dataset: df2k
   checkpoint: ""
