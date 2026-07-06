@@ -15,14 +15,17 @@ from models import MODELS
 from utils import jpeg_compress
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-
-QUALITY_FACTORS = [10, 20, 30, 40, 50]
+QUALITY_FACTORS = [10, 20, 30, 40]
+IMAGE_EXTS = {'.png', '.jpg', '.jpeg'}
 
 
 @hydra.main(version_base=None, config_path="../config", config_name="base")
 def main(cfg: DictConfig) -> None:
+    ds_name = cfg.eval.dataset
+    ds_cfg = cfg.dataset[ds_name]
+
     checkpoint = cfg.eval.checkpoint
-    val_dir = cfg.dataset.df2k.val_dir
+    val_dir = ds_cfg.val_dir
 
     if checkpoint:
         print(f"checkpoint: {checkpoint}")
@@ -33,7 +36,7 @@ def main(cfg: DictConfig) -> None:
         print("checkpoint: none (baseline JPEG)")
         model = None
 
-    images = sorted(Path(val_dir).glob("*.png"))
+    images = sorted(p for p in Path(val_dir).iterdir() if p.suffix in IMAGE_EXTS)
 
     normalize = v2.Compose([
         v2.ToImage(),
@@ -67,6 +70,7 @@ def main(cfg: DictConfig) -> None:
         "PSNR": [np.mean(results[qf]["psnr"]) for qf in QUALITY_FACTORS],
         "SSIM": [np.mean(results[qf]["ssim"]) for qf in QUALITY_FACTORS],
     })
+    print(f"\n{ds_name}")
     print(df)
 
 

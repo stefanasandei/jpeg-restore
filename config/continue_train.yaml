@@ -8,12 +8,13 @@ dataset:
 model: fbcnn
 
 train:
-  epochs: 100
-  lr: 3e-4
+  start_checkpoint: fbcnn.pt
+  epochs: 50
+  lr: 1e-5
   batch_size: 32
   scheduler:
     _target_: torch.optim.lr_scheduler.MultiStepLR
-    milestones: [10, 30, 60, 80]
+    milestones: [30]
     gamma: 0.5
 
 eval:

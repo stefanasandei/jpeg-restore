@@ -37,6 +37,8 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
 
     # 2. model
     model = MODELS[cfg.model]().to(device)
+    if cfg.train.start_checkpoint:
+        model.load_state_dict(torch.load(cfg.train.start_checkpoint, weights_only=True))
 
     # 3. hyperparameters
     epochs = train_cfg.epochs
@@ -75,7 +77,7 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
             train_loss += loss_rec.item()
 
             run.log({"train_loss": loss_rec.item(), "lr": optimizer.param_groups[0]["lr"], "grad_norm": total_norm.item()})
-        
+
         scheduler.step()
 
         # validation epoch
