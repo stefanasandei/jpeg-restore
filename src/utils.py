@@ -1,5 +1,7 @@
-import io
 from PIL import Image
+
+import cv2
+import numpy as np
 
 import matplotlib.pyplot as plt
 import torchvision.transforms.functional as F
@@ -7,12 +9,14 @@ import torchvision.transforms.functional as F
 import torch
 
 
+def numpy_jpeg_compress(img_rgb, quality):
+    img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+    _, encimg = cv2.imencode('.jpg', img_bgr, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    return cv2.cvtColor(cv2.imdecode(encimg, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
+
+
 def jpeg_compress(img, quality):
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=quality)
-    compressed = Image.open(buf)
-    compressed.load()
-    return compressed
+    return Image.fromarray(numpy_jpeg_compress(np.array(img.convert("RGB")), quality))
 
 
 def visualize(model, batch, device):

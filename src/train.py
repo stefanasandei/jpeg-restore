@@ -32,8 +32,8 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
     train_ds = DF2KDataset(root_dir=df2k_cfg.train_dir, train=True)
     val_ds = DF2KDataset(root_dir=df2k_cfg.val_dir, train=False)
 
-    train_loader = DataLoader(train_ds, batch_size=train_cfg.batch_size, shuffle=True, num_workers=8, pin_memory=True, persistent_workers=True, prefetch_factor=4)
-    val_loader = DataLoader(val_ds, batch_size=train_cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True, persistent_workers=True, prefetch_factor=4)
+    train_loader = DataLoader(train_ds, batch_size=train_cfg.batch_size, shuffle=True, num_workers=8, pin_memory=True, prefetch_factor=4)
+    val_loader = DataLoader(val_ds, batch_size=train_cfg.batch_size, shuffle=False, num_workers=2, pin_memory=True)
 
     # 2. model
     model = MODELS[cfg.model]().to(device)
@@ -62,7 +62,7 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
             loss_qf = criterion(q_pred, q_target)
             loss = loss_rec + 0.1 * loss_qf
 
-            if torch.isnan(loss) or loss.item() > 1000.0:
+            if torch.isnan(loss) or loss.item() > 1.0:
                 print("Unstable step detected. Skipping batch.")
                 torch.save(compressed, "bad_batch.pt")
                 continue
