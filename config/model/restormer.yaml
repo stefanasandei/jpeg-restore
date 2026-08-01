@@ -1,0 +1,13 @@
+# @package _global_
+model_name: restormer
+model:
+  _target_: models.RestormerRestoration
+  inp_channels: 3
+  out_channels: 3
+  dim: 64
+  num_blocks: [6, 8, 8, 10]
+  num_refinement_blocks: 4
+  heads: [1, 2, 4, 8]
+  ffn_expansion_factor: 2.66
+  bias: false
+  layer_norm_type: WithBias

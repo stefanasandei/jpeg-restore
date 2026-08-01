@@ -1,0 +1,4 @@
+# @package _global_
+model_name: fbcnn
+model:
+  _target_: models.FBCNN

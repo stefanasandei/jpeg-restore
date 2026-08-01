@@ -1,0 +1,19 @@
+# @package _global_
+model_name: linear_dit
+model:
+  _target_: models.LinearDiTRestoration
+  in_channels: 3
+  out_channels: 3
+  patch_size: 4
+  # Capacity-matched to the other benchmark backbones (~65M parameters).
+  hidden_size: 576
+  depth: 16
+  num_heads: 18
+  mlp_ratio: 2.5
+  linear_head_dim: 32
+  window_size: 8
+  window_block_interval: 4
+  caption_channels: 576
+  # A fixed one-token null condition makes cross-attention input-independent.
+  use_cross_attention: false
+  timestep: 0

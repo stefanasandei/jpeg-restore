@@ -1,14 +1,6 @@
-dataset:
-  df2k:
-    train_dir: /mnt/sda3/Documents/Datasets/DF2K/DF2K_train_HR
-    val_dir: /mnt/sda3/Documents/Datasets/DF2K/DF2K_valid_HR
-  bsds500:
-    val_dir: /mnt/sda3/Documents/Datasets/BSDS500/images/test
-  urban100:
-    val_dir: /mnt/sda3/Documents/Datasets/Urban100
-    glob: "**/*_HR.png"
-
-model: fbcnn
+defaults:
+  - base
+  - _self_
 
 train:
   start_checkpoint: fbcnn.pt
@@ -22,4 +14,3 @@ train:
 
 eval:
   dataset: bsds500
-  checkpoint: ""

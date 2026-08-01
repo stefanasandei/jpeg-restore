@@ -1,0 +1,11 @@
+# @package _global_
+model_name: adm_unet
+model:
+  _target_: models.ADMRestoration
+  channels_per_layer: [96, 192, 288, 384]
+  num_resize: 3
+  num_res_per_layer: 2
+  use_attention_for_layer: [false, false, false, true]
+  dim_res_cond: 384
+  time_embed_dim: 256
+  timestep: 0

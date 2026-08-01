@@ -9,6 +9,12 @@ import torchvision.transforms.functional as F
 import torch
 
 
+def unpack_model_output(output):
+    if isinstance(output, torch.Tensor):
+        return output, None
+    return output
+
+
 def numpy_jpeg_compress(img_rgb, quality):
     img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
     _, encimg = cv2.imencode('.jpg', img_bgr, [cv2.IMWRITE_JPEG_QUALITY, quality])
@@ -26,7 +32,7 @@ def visualize(model, batch, device):
     gt_batch = batch[1].to(device)
 
     with torch.no_grad():
-        pred_batch = model(compressed_batch)[0]
+        pred_batch, _ = unpack_model_output(model(compressed_batch))
 
     for i in range(4):
         compressed = compressed_batch[i]

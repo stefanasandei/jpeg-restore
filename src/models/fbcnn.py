@@ -61,8 +61,9 @@ class FlexibleController(nn.Module):
 
 
 class FBCNN(nn.Module):
-    def __init__(self, in_nc=3, out_nc=3, nc=[64, 128, 256, 512]):
+    def __init__(self, in_nc=3, out_nc=3, nc=[64, 128, 256, 512], clamp_output=True):
         super().__init__()
+        self.clamp_output = clamp_output
 
         self.head = nn.Conv2d(in_nc, nc[0], 3, 1, 1)
 
@@ -145,7 +146,9 @@ class FBCNN(nn.Module):
         x = x + feat1
 
         x = self.tail(x)
-        x = torch.clamp(x[..., :h, :w], 0.0, 1.0)
+        x = x[..., :h, :w]
+        if self.clamp_output:
+            x = torch.clamp(x, 0.0, 1.0)
         return x, q_pred
 
 

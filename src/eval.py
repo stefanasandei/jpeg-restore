@@ -1,5 +1,6 @@
 from pathlib import Path
 import hydra
+from hydra.utils import instantiate
 from omegaconf import DictConfig
 from PIL import Image
 from tqdm import tqdm
@@ -12,8 +13,7 @@ from torchmetrics.functional.image import peak_signal_noise_ratio
 from torchmetrics.functional.image import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
-from models import MODELS
-from utils import jpeg_compress
+from utils import jpeg_compress, unpack_model_output
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 QUALITY_FACTORS = [10, 20, 30, 40]
@@ -30,7 +30,7 @@ def main(cfg: DictConfig) -> None:
 
     if checkpoint:
         print(f"checkpoint: {checkpoint}")
-        model = MODELS[cfg.model]().to(device)
+        model = instantiate(cfg.model).to(device)
         model.load_state_dict(torch.load(checkpoint, map_location=device, weights_only=True))
         model.eval()
     else:
@@ -60,7 +60,7 @@ def main(cfg: DictConfig) -> None:
 
             if model is not None:
                 with torch.no_grad():
-                    pred, _ = model(compressed_tensor)
+                    pred, _ = unpack_model_output(model(compressed_tensor))
             else:
                 pred = compressed_tensor
 
