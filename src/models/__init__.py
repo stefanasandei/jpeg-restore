@@ -4,6 +4,7 @@ from models.fbcnn import FBCNN
 from models.linear_dit import LinearDiTRestoration
 from models.restormer import RestormerRestoration
 from models.wavelet import HaarWaveletRestoration
+from models.wrappers import dimsum_model
 
 MODELS = {
     "fbcnn": FBCNN,

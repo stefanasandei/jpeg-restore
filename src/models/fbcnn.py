@@ -61,9 +61,17 @@ class FlexibleController(nn.Module):
 
 
 class FBCNN(nn.Module):
-    def __init__(self, in_nc=3, out_nc=3, nc=[64, 128, 256, 512], clamp_output=True):
+    def __init__(
+        self,
+        in_nc=3,
+        out_nc=3,
+        nc=[64, 128, 256, 512],
+        clamp_output=True,
+        quality_loss_weight=0.1,
+    ):
         super().__init__()
         self.clamp_output = clamp_output
+        self.quality_loss_weight = quality_loss_weight
 
         self.head = nn.Conv2d(in_nc, nc[0], 3, 1, 1)
 
@@ -150,6 +158,16 @@ class FBCNN(nn.Module):
         if self.clamp_output:
             x = torch.clamp(x, 0.0, 1.0)
         return x, q_pred
+
+    def compute_loss(self, degraded, clean, quality):
+        restored, predicted_quality = self(degraded)
+        reconstruction = F.l1_loss(restored, clean)
+        quality_loss = F.l1_loss(predicted_quality, quality)
+        return {
+            "loss": reconstruction + self.quality_loss_weight * quality_loss,
+            "reconstruction": reconstruction,
+            "quality": quality_loss,
+        }
 
 
 if __name__ == "__main__":

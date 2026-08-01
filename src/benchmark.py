@@ -167,7 +167,7 @@ def benchmark(args):
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark restoration model throughput")
     parser.add_argument("--models", nargs="+", choices=MODEL_NAMES, default=MODEL_NAMES)
-    parser.add_argument("--batch-sizes", nargs="+", type=int, default=[1, 2, 4, 16])
+    parser.add_argument("--batch-sizes", nargs="+", type=int, default=[1, 2, 4])
     parser.add_argument("--height", type=int, default=720)
     parser.add_argument("--width", type=int, default=1280)
     parser.add_argument("--warmup", type=int, default=5)

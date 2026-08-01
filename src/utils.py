@@ -15,6 +15,13 @@ def unpack_model_output(output):
     return output
 
 
+def predict(model, image, generator=None):
+    """Run a model, using reproducible noise when it exposes a sampler."""
+    if generator is not None and hasattr(model, "sample"):
+        return unpack_model_output(model.sample(image, generator=generator))
+    return unpack_model_output(model(image))
+
+
 def numpy_jpeg_compress(img_rgb, quality):
     img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
     _, encimg = cv2.imencode('.jpg', img_bgr, [cv2.IMWRITE_JPEG_QUALITY, quality])
@@ -25,14 +32,14 @@ def jpeg_compress(img, quality):
     return Image.fromarray(numpy_jpeg_compress(np.array(img.convert("RGB")), quality))
 
 
-def visualize(model, batch, device):
+def visualize(model, batch, device, generator=None):
     fig, axes = plt.subplots(4, 3, figsize=(12, 16))
 
     compressed_batch = batch[0].to(device)
     gt_batch = batch[1].to(device)
 
     with torch.no_grad():
-        pred_batch, _ = unpack_model_output(model(compressed_batch))
+        pred_batch, _ = predict(model, compressed_batch, generator)
 
     for i in range(4):
         compressed = compressed_batch[i]

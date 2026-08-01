@@ -43,7 +43,7 @@ class DF2KDataset(Dataset):
     def __getitem__(self, idx):
         path = f"{self.root_dir}/{self.images[idx]}"
 
-        img = Image.open(path)
+        img = Image.open(path).convert("RGB")
         img = self.preprocess(img)
         compressed, q_target = self.compress(img)
 

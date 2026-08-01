@@ -13,7 +13,7 @@ from torchmetrics.functional.image import peak_signal_noise_ratio
 from torchmetrics.functional.image import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
-from utils import jpeg_compress, unpack_model_output
+from utils import jpeg_compress, predict
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 QUALITY_FACTORS = [10, 20, 30, 40]
@@ -46,11 +46,12 @@ def main(cfg: DictConfig) -> None:
     ])
 
     lpips_metric = LearnedPerceptualImagePatchSimilarity(normalize=True).to(device)
+    eval_generator = torch.Generator(device=device).manual_seed(cfg.eval.get("seed", 0))
 
     results = {qf: {"psnr": [], "ssim": [], "lpips": []} for qf in QUALITY_FACTORS}
 
     for img_path in tqdm(images, desc="eval"):
-        clean = Image.open(img_path)
+        clean = Image.open(img_path).convert("RGB")
         clean_tensor = normalize(clean).to(device)
         clean_tensor_batch = clean_tensor.unsqueeze(0)
 
@@ -60,7 +61,7 @@ def main(cfg: DictConfig) -> None:
 
             if model is not None:
                 with torch.no_grad():
-                    pred, _ = unpack_model_output(model(compressed_tensor))
+                    pred, _ = predict(model, compressed_tensor, eval_generator)
             else:
                 pred = compressed_tensor
 

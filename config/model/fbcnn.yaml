@@ -2,3 +2,4 @@
 model_name: fbcnn
 model:
   _target_: models.FBCNN
+  quality_loss_weight: 0.1

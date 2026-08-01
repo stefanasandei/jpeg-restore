@@ -1,0 +1,30 @@
+# @package _global_
+model_name: dimsum_rf
+model:
+  _target_: models.dimsum_model
+  objective: rectified_flow
+  sample_steps: 20
+  # The flow transports N(0, I) to (clean - compressed) / residual_scale.
+  # DF2K JPEG residuals have RMS ~= 0.02-0.04, so 0.1 avoids a tiny target.
+  residual_scale: 0.1
+  noise_scale: 1.0
+  # DiMSUM's sinusoidal embedder expects diffusion-scale timesteps.
+  timestep_scale: 1000.0
+  out_channels: 3
+  patch_size: 8
+  patch_hidden_size: 96
+  hidden_size: 384
+  depth: 16
+  num_heads: 8
+  global_num_heads: 16
+  state_size: 16
+  convolution_size: 4
+  expansion: 2
+  mlp_ratio: 4.0
+  global_attention_interval: 4
+
+model_scheduler:
+  _target_: schedulers.warmup_cosine
+  total_epochs: ${train.epochs}
+  warmup_epochs: 5
+  min_lr_ratio: 0.05

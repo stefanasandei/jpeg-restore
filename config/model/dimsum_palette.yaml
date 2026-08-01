@@ -1,8 +1,12 @@
 # @package _global_
-model_name: dimsum
+model_name: dimsum_${model.objective}
 model:
-  _target_: models.DiMSUMRestoration
-  in_channels: 3
+  _target_: models.dimsum_model
+  objective: regression  # regression | rectified_flow
+  sample_steps: 20
+  residual_scale: 0.1
+  noise_scale: 1.0
+  timestep_scale: 1000.0
   out_channels: 3
   patch_size: 8
   patch_hidden_size: 96
@@ -15,4 +19,3 @@ model:
   expansion: 2
   mlp_ratio: 4.0
   global_attention_interval: 4
-  timestep: 0

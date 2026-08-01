@@ -334,20 +334,61 @@ class SharedTransformerBlock(nn.Module):
 
 
 class FinalLayer(nn.Module):
-    def __init__(self, hidden_size, patch_size, out_channels):
+    def __init__(self, hidden_size):
         super().__init__()
         self.norm = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
         self.modulation = nn.Sequential(
             nn.SiLU(), nn.Linear(hidden_size, hidden_size * 2)
         )
-        self.linear = nn.Linear(
-            hidden_size, patch_size * patch_size * out_channels
-        )
 
     def forward(self, x, condition):
         shift, scale = self.modulation(condition).chunk(2, dim=-1)
-        return self.linear(modulate(self.norm(x), shift, scale))
+        return modulate(self.norm(x), shift, scale)
 
+
+class HierarchicalPatch8(nn.Module):
+    """Embed pixels through aligned 4x4 cells and 8x8 JPEG-block tokens."""
+
+    def __init__(self, in_channels: int, hidden_dim: int, token_dim: int) -> None:
+        super().__init__()
+
+        # Four local 4x4 embeddings are merged into each 8x8 JPEG-block token.
+        self.local_embed = nn.Sequential(
+            nn.Conv2d(in_channels, hidden_dim, 4, stride=4),
+            nn.GELU(),
+            nn.Conv2d(hidden_dim, hidden_dim, 3, padding=1),
+            nn.GELU(),
+        )
+        self.merge = nn.Conv2d(hidden_dim, token_dim, 2, stride=2)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.merge(self.local_embed(x))
+
+
+class HierarchicalUnpatch8(nn.Module):
+    """Decode stride-8 tokens through 4x4 cells back to pixels."""
+
+    def __init__(self, token_dim: int, hidden_dim: int, out_channels: int) -> None:
+        super().__init__()
+        self.to_blocks = nn.Sequential(
+            nn.Conv2d(token_dim, hidden_dim * 4, 3, padding=1),
+            nn.PixelShuffle(2),
+            nn.GELU(),
+            nn.Conv2d(hidden_dim, hidden_dim, 3, padding=1),
+            nn.GELU(),
+        )
+        self.to_coefficients = nn.Sequential(
+            nn.Conv2d(hidden_dim, out_channels * 16, 3, padding=1),
+            nn.PixelShuffle(4),
+            nn.Conv2d(out_channels, out_channels, 3, padding=1),
+        )
+
+    def forward(self, x: torch.Tensor, height: int, width: int) -> torch.Tensor:
+        batch, tokens, channels = x.shape
+        if tokens != height * width:
+            raise ValueError("token count does not match the supplied grid")
+        x = x.transpose(1, 2).reshape(batch, channels, height, width)
+        return self.to_coefficients(self.to_blocks(x))
 
 class DiMSUM(nn.Module):
     def __init__(
@@ -355,6 +396,7 @@ class DiMSUM(nn.Module):
         in_channels=3,
         out_channels=3,
         patch_size=8,
+        patch_hidden_size=96,
         hidden_size=384,
         depth=16,
         num_heads=8,
@@ -374,13 +416,15 @@ class DiMSUM(nn.Module):
             raise ValueError("hidden_size must be divisible by four")
         if global_attention_interval < 1:
             raise ValueError("global_attention_interval must be positive")
+        if patch_size != 8:
+            raise ValueError("the hierarchical patch encoder requires patch_size=8")
 
         self.out_channels = out_channels
         self.patch_size = patch_size
         self.hidden_size = hidden_size
         self.global_attention_interval = global_attention_interval
-        self.x_embedder = nn.Conv2d(
-            in_channels, hidden_size, patch_size, stride=patch_size
+        self.x_embedder = HierarchicalPatch8(
+            in_channels, patch_hidden_size, hidden_size
         )
         self.t_embedder = TimestepEmbedder(hidden_size)
         self.blocks = nn.ModuleList(
@@ -400,7 +444,10 @@ class DiMSUM(nn.Module):
         self.shared_transformer = SharedTransformerBlock(
             hidden_size, global_num_heads, mlp_ratio
         )
-        self.final_layer = FinalLayer(hidden_size, patch_size, out_channels)
+        self.final_layer = FinalLayer(hidden_size)
+        self.output_decoder = HierarchicalUnpatch8(
+            hidden_size, patch_hidden_size, out_channels
+        )
         self.initialize_weights()
 
     @staticmethod
@@ -418,11 +465,8 @@ class DiMSUM(nn.Module):
         return torch.cat((x.sin(), x.cos(), y.sin(), y.cos()), dim=-1)[None].to(dtype)
 
     def initialize_weights(self):
-        nn.init.xavier_uniform_(
-            self.x_embedder.weight.view(self.x_embedder.weight.shape[0], -1)
-        )
-        if self.x_embedder.bias is not None:
-            nn.init.zeros_(self.x_embedder.bias)
+        # Hierarchical convolution layers retain PyTorch's fan-in-scaled
+        # defaults; the task-specific zero initializations below are important.
         nn.init.normal_(self.t_embedder.mlp[0].weight, std=0.02)
         nn.init.normal_(self.t_embedder.mlp[2].weight, std=0.02)
         for block in self.blocks:
@@ -430,18 +474,9 @@ class DiMSUM(nn.Module):
             nn.init.zeros_(block.mlp_modulation[-1].bias)
         nn.init.zeros_(self.final_layer.modulation[-1].weight)
         nn.init.zeros_(self.final_layer.modulation[-1].bias)
-        nn.init.zeros_(self.final_layer.linear.weight)
-        nn.init.zeros_(self.final_layer.linear.bias)
-
-    def unpatchify(self, x, height, width):
-        patch = self.patch_size
-        x = x.view(
-            x.shape[0], height, width, patch, patch, self.out_channels
-        )
-        x = torch.einsum("nhwpqc->nchpwq", x)
-        return x.reshape(
-            x.shape[0], self.out_channels, height * patch, width * patch
-        )
+        output = self.output_decoder.to_coefficients[-1]
+        nn.init.zeros_(output.weight)
+        nn.init.zeros_(output.bias)
 
     def forward(self, image, timestep):
         x = self.x_embedder(image)
@@ -459,11 +494,11 @@ class DiMSUM(nn.Module):
             if (index + 1) % self.global_attention_interval == 0:
                 x = self.shared_transformer(x, condition)
         x = self.final_layer(x, condition)
-        return self.unpatchify(x, height, width)
+        return self.output_decoder(x, height, width)
 
 
 class DiMSUMRestoration(DiMSUM):
-    """DiMSUM with shape padding and the repository's output contract."""
+    """DiMSUM with shape padding"""
 
     def __init__(self, timestep=0, **kwargs):
         super().__init__(**kwargs)
@@ -483,3 +518,8 @@ class DiMSUMRestoration(DiMSUM):
         )
         restored = super().forward(image, timestep)[..., :height, :width]
         return restored, None
+
+    def compute_loss(self, degraded, clean, quality):
+        restored, _ = self(degraded)
+        reconstruction = F.l1_loss(restored, clean)
+        return {"loss": reconstruction, "reconstruction": reconstruction}

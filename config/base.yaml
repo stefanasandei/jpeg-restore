@@ -14,13 +14,15 @@ dataset:
 
 train:
   start_checkpoint: ""
-  epochs: 100
+  epochs: 200
+  sample_every: 25
   lr: 3e-4
   batch_size: 32
-  quality_loss_weight: 0.1
+  # Reset every validation epoch so stochastic restorations remain comparable.
+  val_seed: 0
   scheduler:
     _target_: torch.optim.lr_scheduler.MultiStepLR
-    milestones: [10, 30, 60, 80]
+    milestones: [10, 30, 60, 90]
     gamma: 0.5
 
 eval:
