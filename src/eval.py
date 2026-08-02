@@ -31,7 +31,8 @@ def main(cfg: DictConfig) -> None:
     if checkpoint:
         print(f"checkpoint: {checkpoint}")
         model = instantiate(cfg.model).to(device)
-        model.load_state_dict(torch.load(checkpoint, map_location=device, weights_only=True))
+        state = torch.load(checkpoint, map_location=device, weights_only=True)
+        model.load_state_dict(state.get("model", state))
         model.eval()
     else:
         print("checkpoint: none (baseline JPEG)")

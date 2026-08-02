@@ -9,12 +9,22 @@ import torch
 from utils import jpeg_compress
 
 
-class RandomJPEG:
-    def __init__(self, quality_range=(10, 95)):
+class JPEGCompression:
+    def __init__(self, quality_range=(10, 95), random_quality=True):
         self.low, self.high = quality_range
+        self.random_quality = random_quality
 
-    def __call__(self, img):
-        q = random.randint(self.low, self.high)
+    def __call__(self, img, index=None):
+        if self.random_quality:
+            q = random.randint(self.low, self.high)
+        else:
+            if index is None:
+                raise ValueError("index is required for deterministic JPEG quality")
+            quality_count = self.high - self.low + 1
+            # 37 is coprime with the 86-value [10, 95] range, so nearby
+            # validation images cover very different qualities while a full
+            # cycle still visits every quality exactly once.
+            q = self.low + (index * 37) % quality_count
         return jpeg_compress(img, q), 1.0 - q / 100.0
 
 
@@ -23,7 +33,9 @@ class DF2KDataset(Dataset):
         super().__init__()
 
         self.root_dir = root_dir
-        self.images = [f for f in os.listdir(root_dir) if f.endswith(".png")]
+        self.images = sorted(
+            f for f in os.listdir(root_dir) if f.endswith(".png")
+        )
 
         if train:
             self.preprocess = v2.Compose([
@@ -34,7 +46,9 @@ class DF2KDataset(Dataset):
         else:
             self.preprocess = v2.CenterCrop(128)
 
-        self.compress = RandomJPEG((10, 95) if train else (30, 30))
+        # Validation spans the training degradation range but assigns each
+        # image a deterministic quality for reproducible metric comparisons.
+        self.compress = JPEGCompression((10, 95), random_quality=train)
         self.normalize = v2.Compose([
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
@@ -45,7 +59,7 @@ class DF2KDataset(Dataset):
 
         img = Image.open(path).convert("RGB")
         img = self.preprocess(img)
-        compressed, q_target = self.compress(img)
+        compressed, q_target = self.compress(img, idx)
 
         return (
             self.normalize(compressed),

@@ -418,7 +418,6 @@ class DiMSUM(nn.Module):
             raise ValueError("global_attention_interval must be positive")
         if patch_size != 8:
             raise ValueError("the hierarchical patch encoder requires patch_size=8")
-
         self.out_channels = out_channels
         self.patch_size = patch_size
         self.hidden_size = hidden_size
@@ -470,8 +469,15 @@ class DiMSUM(nn.Module):
         nn.init.normal_(self.t_embedder.mlp[0].weight, std=0.02)
         nn.init.normal_(self.t_embedder.mlp[2].weight, std=0.02)
         for block in self.blocks:
-            nn.init.zeros_(block.mlp_modulation[-1].weight)
-            nn.init.zeros_(block.mlp_modulation[-1].bias)
+            for modulation in (
+                block.spatial.modulation,
+                block.frequency.modulation,
+                block.mlp_modulation,
+            ):
+                nn.init.zeros_(modulation[-1].weight)
+                nn.init.zeros_(modulation[-1].bias)
+        nn.init.zeros_(self.shared_transformer.modulation[-1].weight)
+        nn.init.zeros_(self.shared_transformer.modulation[-1].bias)
         nn.init.zeros_(self.final_layer.modulation[-1].weight)
         nn.init.zeros_(self.final_layer.modulation[-1].bias)
         output = self.output_decoder.to_coefficients[-1]
@@ -493,6 +499,10 @@ class DiMSUM(nn.Module):
             x, residual = block(x, residual, condition, height, width)
             if (index + 1) % self.global_attention_interval == 0:
                 x = self.shared_transformer(x, condition)
+        # DiMSUM blocks use an Add -> LayerNorm -> Mixer residual stream. The
+        # last mixer output must be merged just like it is between blocks.
+        if residual is not None:
+            x = x + residual
         x = self.final_layer(x, condition)
         return self.output_decoder(x, height, width)
 

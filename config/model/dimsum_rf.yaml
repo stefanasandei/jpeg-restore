@@ -4,12 +4,10 @@ model:
   _target_: models.dimsum_model
   objective: rectified_flow
   sample_steps: 20
-  # The flow transports N(0, I) to (clean - compressed) / residual_scale.
-  # DF2K JPEG residuals have RMS ~= 0.02-0.04, so 0.1 avoids a tiny target.
-  residual_scale: 0.1
-  noise_scale: 1.0
   # DiMSUM's sinusoidal embedder expects diffusion-scale timesteps.
   timestep_scale: 1000.0
+  endpoint_loss_weight: 1.0
+  dct_loss_weight: 0.1
   out_channels: 3
   patch_size: 8
   patch_hidden_size: 96

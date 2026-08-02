@@ -1,0 +1,46 @@
+defaults:
+  - base
+  - override model: dimsum_rf
+  - _self_
+
+# Continue the 200-epoch/21.6k-update rectified-flow run to roughly 70k total
+# optimizer updates (108 updates per epoch). AdamW moments are retained, while
+# the exhausted original cosine schedule is deliberately restarted.
+train:
+  # Restart from the preserved checkpoint. The first continuation attempt used
+  # 1e-4 and visibly regressed between epochs 203 and 230.
+  start_checkpoint: dimsum_rf_200e.pt
+  resume_optimizer: true
+  # Reset the old 200-epoch schedule on the first launch, but resume the new
+  # 450-epoch schedule automatically after an interrupted continuation.
+  resume_scheduler: auto
+  epochs: 650
+  batch_size: 32
+  lr: 3e-5
+  sample_every: 25
+  val_seed: 0
+  compile:
+    # Inductor was slower with this Mamba/custom-CUDA workload in practice.
+    enabled: false
+    backend: inductor
+    mode: default
+    fullgraph: false
+    dynamic: false
+
+# Let flow matching dominate while retaining a stronger paired anchor than the
+# unstable 0.25 continuation. The original run used 1.0.
+model:
+  endpoint_loss_weight: 0.5
+
+# This phase contains 450 epochs (~48.6k additional updates). LambdaLR applies
+# the first warmup point on construction, so training resumes at 1.5e-5 (the
+# checkpoint LR), reaches 3e-5 in the second epoch, then decays to 3e-6.
+model_scheduler:
+  _target_: schedulers.warmup_cosine
+  total_epochs: 450
+  warmup_epochs: 2
+  min_lr_ratio: 0.1
+
+eval:
+  dataset: df2k
+  checkpoint: dimsum_rf_200e.pt
