@@ -1,10 +1,10 @@
-import os
+from pathlib import Path
 import random
-from PIL import Image
 
-from torch.utils.data import Dataset, DataLoader
-import torchvision.transforms.v2 as v2
+from PIL import Image
 import torch
+from torch.utils.data import Dataset
+import torchvision.transforms.v2 as v2
 
 from utils import jpeg_compress
 
@@ -14,28 +14,23 @@ class JPEGCompression:
         self.low, self.high = quality_range
         self.random_quality = random_quality
 
-    def __call__(self, img, index=None):
+    def __call__(self, image, index=None):
         if self.random_quality:
-            q = random.randint(self.low, self.high)
+            quality = random.randint(self.low, self.high)
         else:
             if index is None:
                 raise ValueError("index is required for deterministic JPEG quality")
-            quality_count = self.high - self.low + 1
-            # 37 is coprime with the 86-value [10, 95] range, so nearby
-            # validation images cover very different qualities while a full
-            # cycle still visits every quality exactly once.
-            q = self.low + (index * 37) % quality_count
-        return jpeg_compress(img, q), 1.0 - q / 100.0
+            count = self.high - self.low + 1
+            # 37 is coprime with the 86 qualities in [10, 95].
+            quality = self.low + (index * 37) % count
+        return jpeg_compress(image, quality), 1.0 - quality / 100.0
 
 
 class DF2KDataset(Dataset):
     def __init__(self, root_dir: str, train: bool = True):
         super().__init__()
 
-        self.root_dir = root_dir
-        self.images = sorted(
-            f for f in os.listdir(root_dir) if f.endswith(".png")
-        )
+        self.images = sorted(Path(root_dir).glob("*.png"))
 
         if train:
             self.preprocess = v2.Compose([
@@ -46,8 +41,7 @@ class DF2KDataset(Dataset):
         else:
             self.preprocess = v2.CenterCrop(128)
 
-        # Validation spans the training degradation range but assigns each
-        # image a deterministic quality for reproducible metric comparisons.
+        # Validation covers the same range with reproducible quality factors.
         self.compress = JPEGCompression((10, 95), random_quality=train)
         self.normalize = v2.Compose([
             v2.ToImage(),
@@ -55,16 +49,14 @@ class DF2KDataset(Dataset):
         ])
 
     def __getitem__(self, idx):
-        path = f"{self.root_dir}/{self.images[idx]}"
-
-        img = Image.open(path).convert("RGB")
-        img = self.preprocess(img)
-        compressed, q_target = self.compress(img, idx)
+        image = Image.open(self.images[idx]).convert("RGB")
+        image = self.preprocess(image)
+        compressed, quality = self.compress(image, idx)
 
         return (
             self.normalize(compressed),
-            self.normalize(img),
-            torch.tensor([q_target], dtype=torch.float32),
+            self.normalize(image),
+            torch.tensor([quality], dtype=torch.float32),
         )
 
     def __len__(self):
@@ -75,6 +67,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import torchvision.transforms.functional as F
     from omegaconf import OmegaConf
+    from torch.utils.data import DataLoader
 
     torch.random.manual_seed(42)
 

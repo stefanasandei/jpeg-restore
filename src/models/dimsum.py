@@ -27,6 +27,13 @@ def modulate(x, shift, scale):
     return x * (1 + scale[:, None]) + shift[:, None]
 
 
+def pad_to_multiple(image, multiple):
+    height, width = image.shape[-2:]
+    pad_height = (multiple - height % multiple) % multiple
+    pad_width = (multiple - width % multiple) % multiple
+    return F.pad(image, (0, pad_width, 0, pad_height), mode="replicate")
+
+
 class TimestepEmbedder(nn.Module):
     def __init__(self, hidden_size, frequency_embedding_size=256):
         super().__init__()
@@ -132,7 +139,6 @@ def wavelet_window_unscan(x, height, width, column_first=False):
 
 
 def wavelet_packet_encode(x, height, width):
-    channels = x.shape[-1]
     x = rearrange(x, "b (h w) c -> b c h w", h=height, w=width)
     x = haar_encode(haar_encode(x)) * 0.25
     subbands = x.chunk(16, dim=1)
@@ -142,7 +148,6 @@ def wavelet_packet_encode(x, height, width):
 
 
 def wavelet_packet_decode(x, height, width):
-    channels = x.shape[-1]
     x = rearrange(
         x * 4,
         "b (h p w q) c -> b (c p q) h w",
@@ -325,7 +330,8 @@ class SharedTransformerBlock(nn.Module):
             v.transpose(1, 2),
             dropout_p=0.0,
         )
-        attention = self.proj(attention.transpose(1, 2).reshape(batch, tokens, channels))
+        attention = attention.transpose(1, 2).reshape(batch, tokens, channels)
+        attention = self.proj(attention)
         x = x + gate_attn[:, None] * attention
         x = x + gate_mlp[:, None] * self.mlp(
             modulate(self.norm_mlp(x), shift_mlp, scale_mlp)
@@ -351,8 +357,7 @@ class HierarchicalPatch8(nn.Module):
 
     def __init__(self, in_channels: int, hidden_dim: int, token_dim: int) -> None:
         super().__init__()
-
-        # Four local 4x4 embeddings are merged into each 8x8 JPEG-block token.
+        # Merge four local 4x4 embeddings into each 8x8 JPEG-block token.
         self.local_embed = nn.Sequential(
             nn.Conv2d(in_channels, hidden_dim, 4, stride=4),
             nn.GELU(),
@@ -389,6 +394,7 @@ class HierarchicalUnpatch8(nn.Module):
             raise ValueError("token count does not match the supplied grid")
         x = x.transpose(1, 2).reshape(batch, channels, height, width)
         return self.to_coefficients(self.to_blocks(x))
+
 
 class DiMSUM(nn.Module):
     def __init__(
@@ -461,11 +467,14 @@ class DiMSUM(nn.Module):
         )
         y = y.flatten()[:, None] * omega[None]
         x = x.flatten()[:, None] * omega[None]
-        return torch.cat((x.sin(), x.cos(), y.sin(), y.cos()), dim=-1)[None].to(dtype)
+        embedding = torch.cat(
+            (x.sin(), x.cos(), y.sin(), y.cos()), dim=-1
+        )
+        return embedding[None].to(dtype)
 
     def initialize_weights(self):
-        # Hierarchical convolution layers retain PyTorch's fan-in-scaled
-        # defaults; the task-specific zero initializations below are important.
+        # Convolution layers keep PyTorch's defaults. The conditioning paths
+        # and final projection start at zero, as in diffusion transformers.
         nn.init.normal_(self.t_embedder.mlp[0].weight, std=0.02)
         nn.init.normal_(self.t_embedder.mlp[2].weight, std=0.02)
         for block in self.blocks:
@@ -508,7 +517,7 @@ class DiMSUM(nn.Module):
 
 
 class DiMSUMRestoration(DiMSUM):
-    """DiMSUM with shape padding"""
+    """Expose DiMSUM through the repository's restoration interface."""
 
     def __init__(self, timestep=0, **kwargs):
         super().__init__(**kwargs)
@@ -516,10 +525,7 @@ class DiMSUMRestoration(DiMSUM):
 
     def forward(self, image):
         height, width = image.shape[-2:]
-        multiple = self.patch_size * 4
-        pad_height = (multiple - height % multiple) % multiple
-        pad_width = (multiple - width % multiple) % multiple
-        image = F.pad(image, (0, pad_width, 0, pad_height), mode="replicate")
+        image = pad_to_multiple(image, self.patch_size * 4)
         timestep = torch.full(
             (image.shape[0],),
             self.timestep,
@@ -528,8 +534,3 @@ class DiMSUMRestoration(DiMSUM):
         )
         restored = super().forward(image, timestep)[..., :height, :width]
         return restored, None
-
-    def compute_loss(self, degraded, clean, quality):
-        restored, _ = self(degraded)
-        reconstruction = F.l1_loss(restored, clean)
-        return {"loss": reconstruction, "reconstruction": reconstruction}

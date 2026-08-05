@@ -32,7 +32,7 @@ class QFAttentionBlock(nn.Module):
 
 
 class FlexibleController(nn.Module):
-    def __init__(self, nc=[64, 128, 256]):
+    def __init__(self, nc=(64, 128, 256)):
         super().__init__()
 
         self.mlp = nn.Sequential(
@@ -53,10 +53,14 @@ class FlexibleController(nn.Module):
 
     def forward(self, q):
         emb = self.mlp(q)
+
+        def parameters(gamma, beta):
+            return gamma(emb)[..., None, None], beta(emb)[..., None, None]
+
         return (
-            (self.to_gamma_1(emb).unsqueeze(-1).unsqueeze(-1), self.to_beta_1(emb).unsqueeze(-1).unsqueeze(-1)),
-            (self.to_gamma_2(emb).unsqueeze(-1).unsqueeze(-1), self.to_beta_2(emb).unsqueeze(-1).unsqueeze(-1)),
-            (self.to_gamma_3(emb).unsqueeze(-1).unsqueeze(-1), self.to_beta_3(emb).unsqueeze(-1).unsqueeze(-1)),
+            parameters(self.to_gamma_1, self.to_beta_1),
+            parameters(self.to_gamma_2, self.to_beta_2),
+            parameters(self.to_gamma_3, self.to_beta_3),
         )
 
 
@@ -65,7 +69,7 @@ class FBCNN(nn.Module):
         self,
         in_nc=3,
         out_nc=3,
-        nc=[64, 128, 256, 512],
+        nc=(64, 128, 256, 512),
         clamp_output=True,
         quality_loss_weight=0.1,
     ):
@@ -105,7 +109,7 @@ class FBCNN(nn.Module):
             nn.Sigmoid(),
         )
 
-        self.controller = FlexibleController(nc=[nc[0], nc[1], nc[2]])
+        self.controller = FlexibleController(nc[:3])
 
         self.up3 = nn.ConvTranspose2d(nc[3], nc[2], 2, 2, 0)
         self.rec_scale3 = nn.ModuleList([QFAttentionBlock(nc[2]) for _ in range(4)])
@@ -122,7 +126,7 @@ class FBCNN(nn.Module):
         h, w = x.shape[-2:]
         pad_h = (8 - h % 8) % 8
         pad_w = (8 - w % 8) % 8
-        x = F.pad(x, (0, pad_w, 0, pad_h), mode='replicate')
+        x = F.pad(x, (0, pad_w, 0, pad_h), mode="replicate")
 
         feat1 = self.head(x)
         feat2 = self.down1(feat1)

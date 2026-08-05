@@ -4,8 +4,8 @@ defaults:
 
 dataset:
   df2k:
-    train_dir: /mnt/sda3/Documents/Datasets/DF2K/DF2K_train_HR
-    val_dir: /mnt/sda3/Documents/Datasets/DF2K/DF2K_valid_HR
+    train_dir: /mnt/projects/models/01-datasets/DF2K/DF2K_train_HR
+    val_dir: /mnt/projects/models/01-datasets/DF2K/DF2K_valid_HR
   bsds500:
     val_dir: /mnt/sda3/Documents/Datasets/BSDS500/images/test
   urban100:

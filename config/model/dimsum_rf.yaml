@@ -1,13 +1,9 @@
 # @package _global_
 model_name: dimsum_rf
 model:
-  _target_: models.dimsum_model
-  objective: rectified_flow
+  _target_: models.DiMSUMRectifiedFlow
   sample_steps: 20
-  # DiMSUM's sinusoidal embedder expects diffusion-scale timesteps.
   timestep_scale: 1000.0
-  endpoint_loss_weight: 1.0
-  dct_loss_weight: 0.1
   out_channels: 3
   patch_size: 8
   patch_hidden_size: 96

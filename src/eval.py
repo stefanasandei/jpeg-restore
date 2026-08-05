@@ -1,87 +1,102 @@
 from pathlib import Path
+
 import hydra
 from hydra.utils import instantiate
+import numpy as np
 from omegaconf import DictConfig
+import pandas as pd
 from PIL import Image
 from tqdm import tqdm
-import numpy as np
-import pandas as pd
 
 import torch
-import torchvision.transforms.v2 as v2
 from torchmetrics.functional.image import peak_signal_noise_ratio
 from torchmetrics.functional.image import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+import torchvision.transforms.v2 as v2
 
+from checkpoint import model_state
 from utils import jpeg_compress, predict
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 QUALITY_FACTORS = [10, 20, 30, 40]
-IMAGE_EXTS = {'.png', '.jpg', '.jpeg'}
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
+
+
+def load_model(cfg, checkpoint):
+    model = instantiate(cfg.model).to(device)
+    state = torch.load(checkpoint, map_location=device, weights_only=True)
+    model.load_state_dict(model_state(state))
+    return model.eval()
 
 
 @hydra.main(version_base=None, config_path="../config", config_name="base")
 def main(cfg: DictConfig) -> None:
-    ds_name = cfg.eval.dataset
-    ds_cfg = cfg.dataset[ds_name]
-
+    dataset_name = cfg.eval.dataset
+    dataset_cfg = cfg.dataset[dataset_name]
     checkpoint = cfg.eval.checkpoint
-    val_dir = ds_cfg.val_dir
 
     if checkpoint:
         print(f"checkpoint: {checkpoint}")
-        model = instantiate(cfg.model).to(device)
-        state = torch.load(checkpoint, map_location=device, weights_only=True)
-        model.load_state_dict(state.get("model", state))
-        model.eval()
+        model = load_model(cfg, checkpoint)
     else:
         print("checkpoint: none (baseline JPEG)")
         model = None
 
-    glob_pattern = ds_cfg.get("glob", "*")
-    images = sorted(p for p in Path(val_dir).glob(glob_pattern) if p.suffix in IMAGE_EXTS)
+    pattern = dataset_cfg.get("glob", "*")
+    images = sorted(
+        path
+        for path in Path(dataset_cfg.val_dir).glob(pattern)
+        if path.suffix.lower() in IMAGE_EXTENSIONS
+    )
+    if not images:
+        raise ValueError(f"no evaluation images found in {dataset_cfg.val_dir}")
 
-    normalize = v2.Compose([
+    to_tensor = v2.Compose([
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
     ])
+    lpips = LearnedPerceptualImagePatchSimilarity(normalize=True).to(device)
+    generator = torch.Generator(device=device).manual_seed(cfg.eval.get("seed", 0))
+    results = {
+        quality: {"psnr": [], "ssim": [], "lpips": []}
+        for quality in QUALITY_FACTORS
+    }
 
-    lpips_metric = LearnedPerceptualImagePatchSimilarity(normalize=True).to(device)
-    eval_generator = torch.Generator(device=device).manual_seed(cfg.eval.get("seed", 0))
+    with torch.inference_mode():
+        for image_path in tqdm(images, desc="eval"):
+            clean = Image.open(image_path).convert("RGB")
+            clean_tensor = to_tensor(clean).unsqueeze(0).to(device)
 
-    results = {qf: {"psnr": [], "ssim": [], "lpips": []} for qf in QUALITY_FACTORS}
+            for quality in QUALITY_FACTORS:
+                compressed = jpeg_compress(clean, quality)
+                compressed = to_tensor(compressed).unsqueeze(0).to(device)
+                restored = compressed
+                if model is not None:
+                    restored, _ = predict(model, compressed, generator)
 
-    for img_path in tqdm(images, desc="eval"):
-        clean = Image.open(img_path).convert("RGB")
-        clean_tensor = normalize(clean).to(device)
-        clean_tensor_batch = clean_tensor.unsqueeze(0)
+                results[quality]["psnr"].append(
+                    peak_signal_noise_ratio(
+                        restored, clean_tensor, data_range=1.0
+                    ).item()
+                )
+                results[quality]["ssim"].append(
+                    structural_similarity_index_measure(
+                        restored, clean_tensor, data_range=1.0
+                    ).item()
+                )
+                results[quality]["lpips"].append(
+                    lpips(restored, clean_tensor).item()
+                )
 
-        for qf in QUALITY_FACTORS:
-            compressed = jpeg_compress(clean, qf)
-            compressed_tensor = normalize(compressed).unsqueeze(0).to(device)
-
-            if model is not None:
-                with torch.no_grad():
-                    pred, _ = predict(model, compressed_tensor, eval_generator)
-            else:
-                pred = compressed_tensor
-
-            psnr = peak_signal_noise_ratio(pred, clean_tensor_batch, data_range=1.0).item()
-            ssim = structural_similarity_index_measure(pred, clean_tensor_batch, data_range=1.0).item()
-            lpips = lpips_metric(pred, clean_tensor_batch).item()
-
-            results[qf]["psnr"].append(psnr)
-            results[qf]["ssim"].append(ssim)
-            results[qf]["lpips"].append(lpips)
-
-    df = pd.DataFrame({
+    table = pd.DataFrame({
         "QF": QUALITY_FACTORS,
-        "PSNR": [np.mean(results[qf]["psnr"]) for qf in QUALITY_FACTORS],
-        "SSIM": [np.mean(results[qf]["ssim"]) for qf in QUALITY_FACTORS],
-        "LPIPS": [np.mean(results[qf]["lpips"]) for qf in QUALITY_FACTORS],
+        "PSNR": [np.mean(results[q]["psnr"]) for q in QUALITY_FACTORS],
+        "SSIM": [np.mean(results[q]["ssim"]) for q in QUALITY_FACTORS],
+        "LPIPS": [np.mean(results[q]["lpips"]) for q in QUALITY_FACTORS],
     })
-    print(f"\n{ds_name}")
-    print(df)
+    print(f"\n{dataset_name}")
+    print(table)
 
 
 if __name__ == "__main__":
