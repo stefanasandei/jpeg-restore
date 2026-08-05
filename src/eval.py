@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import hydra
 from hydra.utils import instantiate
 import numpy as np
@@ -15,12 +13,12 @@ from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 import torchvision.transforms.v2 as v2
 
 from checkpoint import model_state
+from dataset import image_paths
 from utils import jpeg_compress, predict
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 QUALITY_FACTORS = [10, 20, 30, 40]
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
 
 
 def load_model(cfg, checkpoint):
@@ -32,8 +30,7 @@ def load_model(cfg, checkpoint):
 
 @hydra.main(version_base=None, config_path="../config", config_name="base")
 def main(cfg: DictConfig) -> None:
-    dataset_name = cfg.eval.dataset
-    dataset_cfg = cfg.dataset[dataset_name]
+    dataset_names = cfg.eval.datasets
     checkpoint = cfg.eval.checkpoint
 
     if checkpoint:
@@ -43,14 +40,10 @@ def main(cfg: DictConfig) -> None:
         print("checkpoint: none (baseline JPEG)")
         model = None
 
-    pattern = dataset_cfg.get("glob", "*")
-    images = sorted(
-        path
-        for path in Path(dataset_cfg.val_dir).glob(pattern)
-        if path.suffix.lower() in IMAGE_EXTENSIONS
-    )
+    paths = [path for name in dataset_names for path in cfg.dataset[name]]
+    images = image_paths(paths)
     if not images:
-        raise ValueError(f"no evaluation images found in {dataset_cfg.val_dir}")
+        raise ValueError("no evaluation images found")
 
     to_tensor = v2.Compose([
         v2.ToImage(),
@@ -95,7 +88,7 @@ def main(cfg: DictConfig) -> None:
         "SSIM": [np.mean(results[q]["ssim"]) for q in QUALITY_FACTORS],
         "LPIPS": [np.mean(results[q]["lpips"]) for q in QUALITY_FACTORS],
     })
-    print(f"\n{dataset_name}")
+    print(f"\n{', '.join(dataset_names)}")
     print(table)
 
 

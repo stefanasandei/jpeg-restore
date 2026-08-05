@@ -353,21 +353,88 @@ class FinalLayer(nn.Module):
 
 
 class HierarchicalPatch8(nn.Module):
-    """Embed pixels through aligned 4x4 cells and 8x8 JPEG-block tokens."""
+    """Losslessly tokenize aligned 8x8 pixel blocks.
+
+    Pixel unshuffle keeps every input coefficient available to the flow model.
+    The previous strided-convolution/GELU stem had the same nominal
+    dimensionality but made preservation of fine coefficients needlessly hard.
+    """
 
     def __init__(self, in_channels: int, hidden_dim: int, token_dim: int) -> None:
         super().__init__()
-        # Merge four local 4x4 embeddings into each 8x8 JPEG-block token.
+        # Pixel unshuffle makes the rearrangement explicit; the 1x1 layers can
+        # then begin as identity projections whenever dimensions permit.
         self.local_embed = nn.Sequential(
-            nn.Conv2d(in_channels, hidden_dim, 4, stride=4),
-            nn.GELU(),
-            nn.Conv2d(hidden_dim, hidden_dim, 3, padding=1),
-            nn.GELU(),
+            nn.PixelUnshuffle(4),
+            nn.Conv2d(in_channels * 16, hidden_dim, 1),
         )
-        self.merge = nn.Conv2d(hidden_dim, token_dim, 2, stride=2)
+        self.merge = nn.Sequential(
+            nn.PixelUnshuffle(2),
+            nn.Conv2d(hidden_dim * 4, token_dim, 1),
+        )
+
+        for projection in (self.local_embed[-1], self.merge[-1]):
+            nn.init.dirac_(projection.weight)
+            nn.init.zeros_(projection.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.merge(self.local_embed(x))
+
+
+class PatchTokenize(nn.Module):
+    """Lossless-at-initialization patchification followed by channel mixing."""
+
+    def __init__(self, in_channels: int, token_dim: int, patch_size: int) -> None:
+        super().__init__()
+        self.unshuffle = nn.PixelUnshuffle(patch_size)
+        self.projection = nn.Conv2d(
+            in_channels * patch_size**2, token_dim, 1
+        )
+        nn.init.dirac_(self.projection.weight)
+        nn.init.zeros_(self.projection.bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.projection(self.unshuffle(x))
+
+
+class PatchUnpatch(nn.Module):
+    """Project tokens to patch coefficients and exactly rearrange to a map."""
+
+    def __init__(self, token_dim: int, out_channels: int, patch_size: int) -> None:
+        super().__init__()
+        self.projection = nn.Conv2d(
+            token_dim, out_channels * patch_size**2, 1
+        )
+        self.shuffle = nn.PixelShuffle(patch_size)
+
+    def forward(self, x: torch.Tensor, height: int, width: int) -> torch.Tensor:
+        batch, tokens, channels = x.shape
+        if tokens != height * width:
+            raise ValueError("token count does not match the supplied grid")
+        x = x.transpose(1, 2).reshape(batch, channels, height, width)
+        return self.shuffle(self.projection(x))
+
+
+class ReplicateBorderConv2d(nn.Conv2d):
+    """3x3 convolution with exact, border-only replicate padding."""
+
+    def __init__(self, channels: int) -> None:
+        super().__init__(channels, channels, 3, padding=1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        output = super().forward(x)
+
+        def convolve(strip, padding):
+            strip = F.pad(strip, padding, mode="replicate")
+            return F.conv2d(strip, self.weight, self.bias)
+
+        top = convolve(torch.cat((x[..., :1, :], x[..., :2, :]), dim=-2), (1, 1, 0, 0))
+        bottom = convolve(torch.cat((x[..., -2:, :], x[..., -1:, :]), dim=-2), (1, 1, 0, 0))
+        left = convolve(torch.cat((x[..., :, :1], x[..., :, :2]), dim=-1), (0, 0, 1, 1))
+        right = convolve(torch.cat((x[..., :, -2:], x[..., :, -1:]), dim=-1), (0, 0, 1, 1))
+
+        middle = torch.cat((left[..., 1:-1, :], output[..., 1:-1, 1:-1], right[..., 1:-1, :]), dim=-1)
+        return torch.cat((top, middle, bottom), dim=-2)
 
 
 class HierarchicalUnpatch8(nn.Module):
@@ -385,7 +452,7 @@ class HierarchicalUnpatch8(nn.Module):
         self.to_coefficients = nn.Sequential(
             nn.Conv2d(hidden_dim, out_channels * 16, 3, padding=1),
             nn.PixelShuffle(4),
-            nn.Conv2d(out_channels, out_channels, 3, padding=1),
+            ReplicateBorderConv2d(out_channels),
         )
 
     def forward(self, x: torch.Tensor, height: int, width: int) -> torch.Tensor:
@@ -412,6 +479,7 @@ class DiMSUM(nn.Module):
         expansion=2,
         mlp_ratio=4.0,
         global_attention_interval=4,
+        quality_split=None,
     ):
         super().__init__()
         if hidden_size % 2 or hidden_size // 2 % num_heads:
@@ -422,16 +490,32 @@ class DiMSUM(nn.Module):
             raise ValueError("hidden_size must be divisible by four")
         if global_attention_interval < 1:
             raise ValueError("global_attention_interval must be positive")
-        if patch_size != 8:
-            raise ValueError("the hierarchical patch encoder requires patch_size=8")
+        if patch_size not in (2, 4, 8):
+            raise ValueError("patch_size must be one of 2, 4, or 8")
+        if quality_split is not None and not 0 < quality_split < depth:
+            raise ValueError("quality_split must be in (0, depth)")
         self.out_channels = out_channels
         self.patch_size = patch_size
         self.hidden_size = hidden_size
         self.global_attention_interval = global_attention_interval
-        self.x_embedder = HierarchicalPatch8(
-            in_channels, patch_hidden_size, hidden_size
+        self.quality_split = quality_split or max(1, depth // 2)
+        self.x_embedder = (
+            HierarchicalPatch8(in_channels, patch_hidden_size, hidden_size)
+            if patch_size == 8
+            else PatchTokenize(in_channels, hidden_size, patch_size)
         )
         self.t_embedder = TimestepEmbedder(hidden_size)
+        self.quality_embedder = nn.Sequential(
+            nn.Linear(1, hidden_size),
+            nn.SiLU(),
+            nn.Linear(hidden_size, hidden_size),
+        )
+        self.quality_head = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.SiLU(),
+            nn.Linear(hidden_size, 1),
+            nn.Sigmoid(),
+        )
         self.blocks = nn.ModuleList(
             [
                 DiMSUMBlock(
@@ -450,8 +534,10 @@ class DiMSUM(nn.Module):
             hidden_size, global_num_heads, mlp_ratio
         )
         self.final_layer = FinalLayer(hidden_size)
-        self.output_decoder = HierarchicalUnpatch8(
-            hidden_size, patch_hidden_size, out_channels
+        self.output_decoder = (
+            HierarchicalUnpatch8(hidden_size, patch_hidden_size, out_channels)
+            if patch_size == 8
+            else PatchUnpatch(hidden_size, out_channels, patch_size)
         )
         self.initialize_weights()
 
@@ -477,6 +563,9 @@ class DiMSUM(nn.Module):
         # and final projection start at zero, as in diffusion transformers.
         nn.init.normal_(self.t_embedder.mlp[0].weight, std=0.02)
         nn.init.normal_(self.t_embedder.mlp[2].weight, std=0.02)
+        nn.init.normal_(self.quality_embedder[0].weight, std=0.02)
+        nn.init.zeros_(self.quality_embedder[2].weight)
+        nn.init.zeros_(self.quality_embedder[2].bias)
         for block in self.blocks:
             for modulation in (
                 block.spatial.modulation,
@@ -489,9 +578,20 @@ class DiMSUM(nn.Module):
         nn.init.zeros_(self.shared_transformer.modulation[-1].bias)
         nn.init.zeros_(self.final_layer.modulation[-1].weight)
         nn.init.zeros_(self.final_layer.modulation[-1].bias)
-        output = self.output_decoder.to_coefficients[-1]
-        nn.init.zeros_(output.weight)
+        # Start the clean-residual prediction near zero while retaining a
+        # nonzero gradient path into the backbone.  Exact zero initialization
+        # here freezes every earlier layer on the first update; PyTorch's
+        # default scale makes the residual overwhelm the useful local field.
+        output = (
+            self.output_decoder.to_coefficients[-1]
+            if isinstance(self.output_decoder, HierarchicalUnpatch8)
+            else self.output_decoder.projection
+        )
+        nn.init.normal_(output.weight, std=1e-3)
         nn.init.zeros_(output.bias)
+        # Zero-init the QF head so q_pred starts at sigmoid(0) = 0.5.
+        nn.init.zeros_(self.quality_head[2].weight)
+        nn.init.zeros_(self.quality_head[2].bias)
 
     def forward(self, image, timestep):
         x = self.x_embedder(image)
@@ -504,7 +604,18 @@ class DiMSUM(nn.Module):
         )
         condition = self.t_embedder(timestep)
         residual = None
-        for index, block in enumerate(self.blocks):
+        for index, block in enumerate(self.blocks[: self.quality_split]):
+            x, residual = block(x, residual, condition, height, width)
+            if (index + 1) % self.global_attention_interval == 0:
+                x = self.shared_transformer(x, condition)
+        # FBCNN-style quality conditioning: predict the JPEG quality factor
+        # from a branch over the first half of the blocks, then condition
+        # the second half on it.
+        q_pred = self.quality_head(x.mean(dim=1))
+        condition = condition + self.quality_embedder(q_pred)
+        for index, block in enumerate(
+            self.blocks[self.quality_split :], start=self.quality_split
+        ):
             x, residual = block(x, residual, condition, height, width)
             if (index + 1) % self.global_attention_interval == 0:
                 x = self.shared_transformer(x, condition)
@@ -513,7 +624,7 @@ class DiMSUM(nn.Module):
         if residual is not None:
             x = x + residual
         x = self.final_layer(x, condition)
-        return self.output_decoder(x, height, width)
+        return self.output_decoder(x, height, width), q_pred
 
 
 class DiMSUMRestoration(DiMSUM):
@@ -532,5 +643,5 @@ class DiMSUMRestoration(DiMSUM):
             device=image.device,
             dtype=image.dtype,
         )
-        restored = super().forward(image, timestep)[..., :height, :width]
-        return restored, None
+        restored, _ = super().forward(image, timestep)
+        return restored[..., :height, :width], None

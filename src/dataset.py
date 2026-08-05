@@ -1,4 +1,4 @@
-from pathlib import Path
+import os
 import random
 
 from PIL import Image
@@ -7,6 +7,18 @@ from torch.utils.data import Dataset
 import torchvision.transforms.v2 as v2
 
 from utils import jpeg_compress
+
+
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
+
+
+def image_paths(paths):
+    return sorted(
+        os.path.join(path, filename)
+        for path in paths
+        for filename in os.listdir(path)
+        if os.path.splitext(filename)[1].lower() in IMAGE_EXTENSIONS
+    )
 
 
 class JPEGCompression:
@@ -26,23 +38,32 @@ class JPEGCompression:
         return jpeg_compress(image, quality), 1.0 - quality / 100.0
 
 
-class DF2KDataset(Dataset):
-    def __init__(self, root_dir: str, train: bool = True):
+class HRDataset(Dataset):
+    def __init__(
+        self,
+        paths,
+        train: bool = True,
+        *,
+        crop_size: int = 128,
+        quality_range=(10, 95),
+    ):
         super().__init__()
 
-        self.images = sorted(Path(root_dir).glob("*.png"))
+        self.images = image_paths(paths)
+        if not self.images:
+            raise ValueError("no dataset images found")
 
         if train:
             self.preprocess = v2.Compose([
-                v2.RandomCrop(128),
+                v2.RandomCrop(crop_size),
                 v2.RandomVerticalFlip(),
                 v2.RandomHorizontalFlip(),
             ])
         else:
-            self.preprocess = v2.CenterCrop(128)
+            self.preprocess = v2.CenterCrop(crop_size)
 
         # Validation covers the same range with reproducible quality factors.
-        self.compress = JPEGCompression((10, 95), random_quality=train)
+        self.compress = JPEGCompression(quality_range, random_quality=train)
         self.normalize = v2.Compose([
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
@@ -72,7 +93,7 @@ if __name__ == "__main__":
     torch.random.manual_seed(42)
 
     cfg = OmegaConf.load("config/base.yaml")
-    train_ds = DF2KDataset(root_dir=cfg.dataset.df2k.train_dir)
+    train_ds = HRDataset(cfg.dataset.df2k_train)
     train_loader = DataLoader(train_ds, batch_size=16, shuffle=False)
 
     # 1. smoke test

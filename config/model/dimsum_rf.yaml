@@ -2,10 +2,19 @@
 model_name: dimsum_rf
 model:
   _target_: models.DiMSUMRectifiedFlow
-  sample_steps: 20
+  sample_steps: 50
   timestep_scale: 1000.0
+  min_velocity_denom: 0.05
+  time_logit_mean: -0.8
+  time_logit_std: 0.8
+  sampling_method: heun
+  residual_scale: 16.0
+  endpoint_loss_weight: 1.0
+  dct_loss_weight: 0.1
+  quality_loss_weight: 0.1
+  wavelet_levels: 2
   out_channels: 3
-  patch_size: 8
+  patch_size: 2
   patch_hidden_size: 96
   hidden_size: 384
   depth: 16
@@ -17,7 +26,7 @@ model:
   mlp_ratio: 4.0
   global_attention_interval: 4
 
-model_scheduler:
+lr_scheduler:
   _target_: schedulers.warmup_cosine
   total_epochs: ${train.epochs}
   warmup_epochs: 5

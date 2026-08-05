@@ -65,7 +65,7 @@ def load_checkpoint(
     if resume_scheduler == "auto":
         old_cfg = state.get("config", {})
         old_scheduler = old_cfg.get(
-            "model_scheduler", old_cfg.get("train", {}).get("scheduler")
+            "lr_scheduler", old_cfg.get("train", {}).get("scheduler")
         )
         resume_scheduler = old_scheduler == scheduler_config
         log.info(

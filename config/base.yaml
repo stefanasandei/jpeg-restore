@@ -3,16 +3,13 @@ defaults:
   - _self_
 
 dataset:
-  df2k:
-    train_dir: /mnt/projects/models/01-datasets/DF2K/DF2K_train_HR
-    val_dir: /mnt/projects/models/01-datasets/DF2K/DF2K_valid_HR
-  bsds500:
-    val_dir: /mnt/sda3/Documents/Datasets/BSDS500/images/test
-  urban100:
-    val_dir: /mnt/sda3/Documents/Datasets/Urban100
-    glob: "**/*_HR.png"
+  df2k_train: [/mnt/projects/models/01-datasets/DF2K/DF2K_train_HR]
+  df2k_val: [/mnt/projects/models/01-datasets/DF2K/DF2K_valid_HR]
+  bsds500: [/mnt/sda3/Documents/Datasets/BSDS500/images/test]
+  urban100: [/mnt/sda3/Documents/Datasets/Urban100]
 
 train:
+  datasets: [df2k_train]
   start_checkpoint: ""
   epochs: 200
   sample_every: 25
@@ -26,5 +23,5 @@ train:
     gamma: 0.5
 
 eval:
-  dataset: df2k
+  datasets: [df2k_val]
   checkpoint: ""
