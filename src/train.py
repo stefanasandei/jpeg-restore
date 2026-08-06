@@ -1,4 +1,5 @@
 from collections import defaultdict
+import multiprocessing as mp
 from pathlib import Path
 
 import hydra
@@ -10,12 +11,11 @@ import wandb
 from wandb.sdk.lib import runid
 
 import torch
-import torch.multiprocessing as mp
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from checkpoint import load_checkpoint, save_checkpoint
-from dataset import HRDataset
+from dataset import HRDataset, configure_data_worker
 import utils
 from validation_metrics import RestorationMetrics
 
@@ -43,6 +43,11 @@ def train_step(model, batch, optimizer, device, *, loss_kwargs=None):
 
 def run_training(cfg: DictConfig, run: wandb.Run) -> None:
     train_cfg = cfg.train
+    loader_context = mp.get_context("spawn")
+    read_concurrency = train_cfg.get("read_concurrency", 2)
+    if read_concurrency < 1:
+        raise ValueError("train.read_concurrency must be positive")
+    read_semaphore = loader_context.Semaphore(read_concurrency)
 
     # 1. data
     dataset_paths = lambda cfg, names: [path for name in names for path in cfg.dataset[name]]
@@ -51,11 +56,13 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
         dataset_paths(cfg, train_cfg.datasets),
         train=True,
         crop_size=train_cfg.get("crop_size", 128),
+        read_semaphore=read_semaphore,
     )
     val_ds = HRDataset(
         dataset_paths(cfg, cfg.eval.datasets),
         train=False,
         crop_size=train_cfg.get("val_crop_size", train_cfg.get("crop_size", 128)),
+        read_semaphore=read_semaphore,
     )
     batches = len(train_ds) // train_cfg.batch_size
     print(f"training images={len(train_ds)}, batches={batches}")
@@ -67,6 +74,10 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
         num_workers=8,
         pin_memory=True,
         prefetch_factor=4,
+        persistent_workers=True,
+        multiprocessing_context=loader_context,
+        worker_init_fn=configure_data_worker,
+        in_order=False,
         drop_last=True,
     )
     val_loader = DataLoader(
@@ -75,6 +86,9 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
         shuffle=False,
         num_workers=2,
         pin_memory=True,
+        persistent_workers=True,
+        multiprocessing_context=loader_context,
+        worker_init_fn=configure_data_worker,
     )
 
     # 2. model
@@ -200,7 +214,6 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
 
 @hydra.main(version_base=None, config_path="../config", config_name="base")
 def main(cfg: DictConfig) -> None:
-    mp.set_start_method("fork")
     plt.close("all")
 
     cfg_dict = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
