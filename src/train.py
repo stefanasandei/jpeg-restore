@@ -23,6 +23,24 @@ from validation_metrics import RestorationMetrics
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+def train_step(model, batch, optimizer, device, *, loss_kwargs=None):
+    compressed, clean, quality = (
+        tensor.to(device, non_blocking=True) for tensor in batch
+    )
+    losses = utils.compute_loss(
+        model, compressed, clean, quality, **(loss_kwargs or {})
+    )
+    loss = losses["loss"]
+    if not torch.isfinite(loss):
+        raise FloatingPointError("non-finite training loss")
+
+    optimizer.zero_grad()
+    loss.backward()
+    grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+    optimizer.step()
+    return losses, grad_norm
+
+
 def run_training(cfg: DictConfig, run: wandb.Run) -> None:
     train_cfg = cfg.train
 
@@ -97,22 +115,13 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
         train_totals = defaultdict(float)
         completed_batches = 0
 
-        for compressed, clean, quality in tqdm(train_loader):
-            compressed = compressed.to(device, non_blocking=True)
-            clean = clean.to(device, non_blocking=True)
-            quality = quality.to(device, non_blocking=True)
-
-            losses = utils.compute_loss(model, compressed, clean, quality)
-            loss = losses["loss"]
-            if not torch.isfinite(loss):
+        for batch in tqdm(train_loader):
+            try:
+                losses, grad_norm = train_step(model, batch, optimizer, device)
+            except FloatingPointError:
                 print("Unstable step detected. Skipping batch.")
-                torch.save(compressed, "bad_batch.pt")
+                torch.save(batch[0], "bad_batch.pt")
                 continue
-
-            optimizer.zero_grad()
-            loss.backward()
-            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-            optimizer.step()
 
             completed_batches += 1
             for name, value in losses.items():

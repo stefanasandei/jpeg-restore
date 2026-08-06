@@ -22,10 +22,13 @@ def predict(model, image, generator=None):
     return unpack_model_output(model(image))
 
 
-def compute_loss(model, degraded, clean, quality):
+def compute_loss(model, degraded, clean, quality, **kwargs):
     """Adapt regression and objective-specific models to one training API."""
     if hasattr(model, "compute_loss"):
-        return model.compute_loss(degraded, clean, quality)
+        return model.compute_loss(degraded, clean, quality, **kwargs)
+
+    if kwargs:
+        raise TypeError("loss keyword arguments require an objective-specific model")
 
     restored, _ = unpack_model_output(model(degraded))
     reconstruction = torch_F.l1_loss(restored, clean)
