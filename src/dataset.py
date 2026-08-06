@@ -1,6 +1,9 @@
 import os
 import random
+from io import BytesIO
+from pathlib import Path
 
+import cv2
 from PIL import Image
 import torch
 from torch.utils.data import Dataset
@@ -10,6 +13,11 @@ from utils import jpeg_compress
 
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
+
+
+def configure_data_worker(_worker_id):
+    # each loader process single-threaded inside OpenCV.
+    cv2.setNumThreads(1)
 
 
 def image_paths(paths):
@@ -46,12 +54,14 @@ class HRDataset(Dataset):
         *,
         crop_size: int = 128,
         quality_range=(10, 95),
+        read_semaphore=None,
     ):
         super().__init__()
 
         self.images = image_paths(paths)
         if not self.images:
             raise ValueError("no dataset images found")
+        self.read_semaphore = read_semaphore
 
         if train:
             self.preprocess = v2.Compose([
@@ -70,7 +80,16 @@ class HRDataset(Dataset):
         ])
 
     def __getitem__(self, idx):
-        image = Image.open(self.images[idx]).convert("RGB")
+        if self.read_semaphore is None:
+            source_context = Image.open(self.images[idx])
+        else:
+            # Keep SATA queue depth low, then release the disk slot before the
+            # comparatively CPU-heavy PNG decode and JPEG augmentation.
+            with self.read_semaphore:
+                encoded = Path(self.images[idx]).read_bytes()
+            source_context = Image.open(BytesIO(encoded))
+        with source_context as source:
+            image = source.convert("RGB")
         image = self.preprocess(image)
         compressed, quality = self.compress(image, idx)
 

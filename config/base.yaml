@@ -15,6 +15,9 @@ train:
   sample_every: 25
   lr: 3e-4
   batch_size: 32
+  # /mnt/projects is a SATA device whose latency collapses under many parallel
+  # random reads. Keep I/O queue depth low while all workers decode in parallel.
+  read_concurrency: 2
   # Reset every validation epoch so stochastic restorations remain comparable.
   val_seed: 0
   scheduler:
