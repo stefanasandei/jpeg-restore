@@ -41,7 +41,7 @@ def main(cfg: DictConfig) -> None:
         model = None
 
     paths = [path for name in dataset_names for path in cfg.dataset[name]]
-    images = image_paths(paths)[:10]
+    images = image_paths(paths)
     if not images:
         raise ValueError("no evaluation images found")
 
