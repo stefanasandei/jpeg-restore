@@ -14,7 +14,7 @@ model:
   quality_loss_weight: 0.1
   wavelet_levels: 2
   out_channels: 3
-  patch_size: 2
+  patch_size: 8
   patch_hidden_size: 96
   hidden_size: 384
   depth: 16

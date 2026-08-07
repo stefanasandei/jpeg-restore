@@ -130,14 +130,20 @@ class DiMSUMRectifiedFlow(nn.Module):
         del x_t, t
         return x_1_hat
 
+    def sample_timestep(self, reference, generator=None):
+        logits = torch.randn(
+            reference.shape[0],
+            device=reference.device,
+            dtype=reference.dtype,
+            generator=generator,
+        )
+        return torch.sigmoid(
+            self.time_logit_mean + self.time_logit_std * logits
+        )
+
     def compute_loss(self, y, x_1, quality=None, *, generator=None, t=None, noise=None):
         if t is None:
-            logits = torch.randn(
-                y.shape[0], device=y.device, dtype=y.dtype, generator=generator
-            )
-            t = torch.sigmoid(
-                self.time_logit_mean + self.time_logit_std * logits
-            )
+            t = self.sample_timestep(y, generator)
         else:
             t = t.to(y)
         if t.shape != (y.shape[0],):

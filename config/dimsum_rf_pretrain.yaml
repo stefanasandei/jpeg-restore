@@ -19,15 +19,16 @@ dataset:
 
 train:
   datasets: [df2k_train, lsdir_00, lsdir_01]
-  start_checkpoint: dimsum_rf.pt
+  start_checkpoint: ""
   # Two official LSDIR download shards contain about 10k images. Together
   # with 3,450 DF2K images and batch size 32 this is about 420 updates/epoch;
   # 300 epochs therefore gives about 126k optimizer updates.
-  epochs: 300
+  epochs: 200
   crop_size: 128
   val_crop_size: 128
   batch_size: 32
   lr: 3e-4
+  exploration: 2
   sample_every: 10
   val_seed: 0
   compile:

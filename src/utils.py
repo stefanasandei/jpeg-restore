@@ -6,7 +6,6 @@ import numpy as np
 from PIL import Image
 import torchvision.transforms.functional as F
 import torch
-import torch.nn.functional as torch_F
 
 
 def unpack_model_output(output):
@@ -20,19 +19,6 @@ def predict(model, image, generator=None):
     if generator is not None and hasattr(model, "sample"):
         return unpack_model_output(model.sample(image, generator=generator))
     return unpack_model_output(model(image))
-
-
-def compute_loss(model, degraded, clean, quality, **kwargs):
-    """Adapt regression and objective-specific models to one training API."""
-    if hasattr(model, "compute_loss"):
-        return model.compute_loss(degraded, clean, quality, **kwargs)
-
-    if kwargs:
-        raise TypeError("loss keyword arguments require an objective-specific model")
-
-    restored, _ = unpack_model_output(model(degraded))
-    reconstruction = torch_F.l1_loss(restored, clean)
-    return {"loss": reconstruction, "reconstruction": reconstruction}
 
 
 def compile_model(model, cfg):

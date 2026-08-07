@@ -23,13 +23,36 @@ from validation_metrics import RestorationMetrics
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def train_step(model, batch, optimizer, device, *, loss_kwargs=None):
+def train_step(model, batch, optimizer, device, *, exploration=1, loss_kwargs=None):
+    if exploration < 1:
+        raise ValueError("exploration must be positive")
+
     compressed, clean, quality = (
         tensor.to(device, non_blocking=True) for tensor in batch
     )
-    losses = utils.compute_loss(
-        model, compressed, clean, quality, **(loss_kwargs or {})
-    )
+    loss_kwargs = dict(loss_kwargs or {})
+    if exploration > 1:
+        if "noise" in loss_kwargs:
+            raise ValueError("fixed noise cannot be used with exploration")
+        if "t" not in loss_kwargs:
+            loss_kwargs["t"] = model.sample_timestep(
+                clean, loss_kwargs.get("generator")
+            )
+        best = None
+        with torch.no_grad():
+            # Explorative Modeling: https://arxiv.org/abs/2607.27372
+            for _ in range(exploration):
+                noise = torch.randn_like(
+                    clean, generator=loss_kwargs.get("generator")
+                )
+                candidate = model.compute_loss(
+                    compressed, clean, quality, noise=noise, **loss_kwargs
+                )["loss"]
+                if best is None or candidate < best[0]:
+                    best = candidate, noise
+        loss_kwargs["noise"] = best[1]
+
+    losses = model.compute_loss(compressed, clean, quality, **loss_kwargs)
     loss = losses["loss"]
     if not torch.isfinite(loss):
         raise FloatingPointError("non-finite training loss")
@@ -95,7 +118,7 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
     model = instantiate(cfg.model).to(device)
 
     # 3. hyperparameters
-    optimizer = optim.Adam(
+    optimizer = optim.AdamW(
         model.parameters(), train_cfg.lr, betas=(0.9, 0.95), weight_decay=0
     )
     scheduler_cfg = cfg.get("lr_scheduler", train_cfg.scheduler)
@@ -131,7 +154,13 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
 
         for batch in tqdm(train_loader):
             try:
-                losses, grad_norm = train_step(model, batch, optimizer, device)
+                losses, grad_norm = train_step(
+                    model,
+                    batch,
+                    optimizer,
+                    device,
+                    exploration=train_cfg.get("exploration", 1),
+                )
             except FloatingPointError:
                 print("Unstable step detected. Skipping batch.")
                 torch.save(batch[0], "bad_batch.pt")

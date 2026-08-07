@@ -58,7 +58,7 @@ def measure_loss(model, batch, probes):
     totals = {}
     with torch.no_grad():
         for objective in probes:
-            losses = utils.compute_loss(model, *batch, **objective)
+            losses = model.compute_loss(*batch, **objective)
             for name, value in losses.items():
                 totals[name] = totals.get(name, 0.0) + value.item()
     return {name: value / len(probes) for name, value in totals.items()}
