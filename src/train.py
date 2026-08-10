@@ -13,6 +13,7 @@ from wandb.sdk.lib import runid
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Subset
+from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from checkpoint import load_checkpoint, save_checkpoint
 from dataset import HRDataset, configure_data_worker
@@ -23,16 +24,29 @@ from validation_metrics import RestorationMetrics
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def train_step(model, batch, optimizer, device, exploration=1):
+def train_step(
+    model, batch, optimizer, device, exploration=1, perceptual_loss=None
+):
     if exploration < 1:
         raise ValueError("exploration must be positive")
     compressed, clean, quality = (
         tensor.to(device, non_blocking=True) for tensor in batch
     )
-    loss_kwargs = {}
+    loss_kwargs = (
+        {"perceptual_loss": perceptual_loss}
+        if perceptual_loss is not None
+        else {}
+    )
 
     if exploration > 1:
-        timestep = model.sample_timestep(clean)
+        if hasattr(model, "sample_times"):
+            r, t = model.sample_times(clean)
+            time_kwargs = {"r": r, "t": t}
+        else:
+            time_kwargs = {"t": model.sample_timestep(clean)}
+        exploration_kwargs = dict(time_kwargs)
+        if perceptual_loss is not None:
+            exploration_kwargs["include_perceptual"] = False
         best_loss = best_noise = None
         with torch.no_grad():
             # Explorative Modeling: https://arxiv.org/abs/2607.27372
@@ -42,9 +56,9 @@ def train_step(model, batch, optimizer, device, exploration=1):
                     compressed,
                     clean,
                     quality,
-                    t=timestep,
                     noise=noise,
                     reduction="none",
+                    **exploration_kwargs,
                 )["loss"]
                 if best_loss is None:
                     best_loss, best_noise = loss, noise
@@ -53,7 +67,7 @@ def train_step(model, batch, optimizer, device, exploration=1):
                 best_loss = torch.where(improved, loss, best_loss)
                 improved = improved[:, None, None, None]
                 best_noise = torch.where(improved, noise, best_noise)
-        loss_kwargs = {"t": timestep, "noise": best_noise}
+        loss_kwargs.update(noise=best_noise, **time_kwargs)
 
     losses = utils.compute_loss(
         model, compressed, clean, quality, **loss_kwargs
@@ -133,6 +147,13 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
 
     # 2. model
     model = instantiate(cfg.model).to(device)
+    perceptual_loss = None
+    if getattr(model, "lpips_weight", 0):
+        perceptual_loss = LearnedPerceptualImagePatchSimilarity(
+            net_type=model.lpips_backbone,
+            reduction="none",
+            normalize=True,
+        ).to(device)
 
     # 3. hyperparameters
     optimizer = optim.AdamW(
@@ -178,6 +199,7 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
                     optimizer,
                     device,
                     train_cfg.get("exploration", 1),
+                    perceptual_loss,
                 )
             except FloatingPointError:
                 print("Unstable step detected. Skipping batch.")
@@ -221,7 +243,7 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
 
             with torch.no_grad():
                 restored, _ = utils.predict(model, compressed, generator)
-            val_metrics.update(restored, compressed, clean, quality)
+            val_metrics.update(restored, clean, quality)
 
         metrics = val_metrics.compute()
         train_loss = train_losses["loss"]

@@ -18,12 +18,12 @@ dataset:
 
 train:
   datasets: [df2k_train, lsdir_00, lsdir_01]
-  start_checkpoint: ""
-  epochs: 200
+  start_checkpoint: rela_dit_meanflow.pt
+  epochs: 300
   crop_size: 128
   val_crop_size: 128
   batch_size: 32
-  lr: 3e-4
+  lr: 3e-5
   exploration: 3
   sample_every: 10
   val_seed: 0

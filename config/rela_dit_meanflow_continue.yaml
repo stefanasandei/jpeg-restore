@@ -1,0 +1,39 @@
+defaults:
+  - rela_dit_meanflow
+  - _self_
+
+# Targeted continuation after the active run saves its epoch-220 checkpoint.
+train:
+  datasets: [df2k_train, lsdir_00, lsdir_01]
+  start_checkpoint: rela_dit_meanflow_qf5_20.pt
+  # Preserve Adam moments, but do not restore the old constant-1e-4 scheduler.
+  resume_optimizer: true
+  resume_scheduler: false
+  checkpoint_name: rela_dit_meanflow_qf5_20.pt
+  epochs: 240
+  sample_every: 2
+  crop_size: 256
+  val_crop_size: 256
+  batch_size: 8
+  quality_range: [5, 20]
+  val_quality_range: [5, 20]
+  lr: 2e-5
+  exploration: 1
+
+# Optimize the metric used by eval.py more directly during this short stage.
+model:
+  lpips_weight: 0.4
+  lpips_backbone: alex
+
+# This stage contains 20 epochs (221-240), so schedule over 20 rather than the
+# absolute final epoch number.
+lr_scheduler:
+  _target_: schedulers.warmup_cosine
+  total_epochs: 20
+  warmup_epochs: 0
+  min_lr_ratio: 0.25
+
+eval:
+  datasets: [live1]
+  checkpoint: rela_dit_meanflow_qf5_20.pt
+  seed: 0

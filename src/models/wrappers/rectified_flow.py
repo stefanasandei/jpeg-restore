@@ -1,8 +1,9 @@
 import torch
-from torch import nn
+
+from .flow import ConditionalFlow
 
 
-class RectifiedFlow(nn.Module):
+class RectifiedFlow(ConditionalFlow):
     """Conditional rectified flow with clean endpoint prediction."""
 
     def __init__(
@@ -16,42 +17,21 @@ class RectifiedFlow(nn.Module):
         sampling_method="heun",
         residual_scale=16.0,
     ):
-        super().__init__()
+        super().__init__(model, timestep_scale, residual_scale)
         if sample_steps < 1:
             raise ValueError("sample_steps must be positive")
-        if timestep_scale <= 0 or min_velocity_denom <= 0 or residual_scale <= 0:
-            raise ValueError("flow scales must be positive")
+        if min_velocity_denom <= 0:
+            raise ValueError("min_velocity_denom must be positive")
         if time_logit_std <= 0:
             raise ValueError("time_logit_std must be positive")
         if sampling_method not in ("euler", "heun"):
             raise ValueError("sampling_method must be 'euler' or 'heun'")
 
-        self.model = model
         self.sample_steps = sample_steps
-        self.timestep_scale = timestep_scale
         self.min_velocity_denom = min_velocity_denom
         self.time_logit_mean = time_logit_mean
         self.time_logit_std = time_logit_std
         self.sampling_method = sampling_method
-        self.residual_scale = residual_scale
-
-    def predict(self, state, timestep, condition):
-        output = self.model(
-            state, timestep * self.timestep_scale, condition
-        )
-        return output if isinstance(output, tuple) else (output, None)
-
-    def encode(self, image):
-        return self.model.encode(image)
-
-    def decode(self, state):
-        return self.model.decode(state)
-
-    def target(self, clean, degraded):
-        return (self.encode(clean) - self.encode(degraded)) * self.residual_scale
-
-    def restore(self, condition, residual):
-        return self.decode(condition + residual / self.residual_scale)
 
     @staticmethod
     def interpolate(noise, target, timestep):
@@ -100,18 +80,11 @@ class RectifiedFlow(nn.Module):
         image_size = degraded.shape[-2:]
         degraded = self.model.pad(degraded)
         clean = self.model.pad(clean)
-        if noise is not None and noise.shape[-2:] == image_size:
-            noise = self.model.pad(noise)
         condition = self.encode(degraded)
         target = self.target(clean, degraded)
-        if noise is None:
-            noise = torch.randn_like(target, generator=generator)
-        else:
-            noise = noise.to(target)
-            if noise.shape == degraded.shape:
-                noise = self.encode(noise)
-        if noise.shape != target.shape:
-            raise ValueError("noise must match the image or encoded state")
+        noise = self.prepare_noise(
+            noise, target, degraded, image_size, generator
+        )
 
         state = self.interpolate(noise, target, timestep)
         endpoint, _ = self.predict(state, timestep, condition)
@@ -129,16 +102,9 @@ class RectifiedFlow(nn.Module):
         height, width = degraded.shape[-2:]
         degraded = self.model.pad(degraded)
         condition = self.encode(degraded)
-        if noise is None:
-            noise = torch.randn_like(condition, generator=generator)
-        else:
-            noise = noise.to(condition)
-            if noise.shape[-2:] == (height, width):
-                noise = self.model.pad(noise)
-            if noise.shape == degraded.shape:
-                noise = self.encode(noise)
-        if noise.shape != condition.shape:
-            raise ValueError("noise must match the image or encoded state")
+        noise = self.prepare_noise(
+            noise, condition, degraded, (height, width), generator
+        )
 
         state = noise
         dt = 1 / steps

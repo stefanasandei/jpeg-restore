@@ -1,0 +1,25 @@
+defaults:
+  - rf_pretrain
+  - override model: rela_dit_meanflow
+  - _self_
+
+train:
+  # MeanFlow is a standalone pretraining objective, not an RF distillation run.
+  checkpoint_name: rela_dit_meanflow.pt
+  quality_range: [5, 40]
+  val_quality_range: [5, 20]
+  lr: 5e-5
+  exploration: 1
+  compile:
+    # torch.compile does not currently compose reliably with the JVP path.
+    enabled: false
+
+lr_scheduler:
+  _target_: schedulers.warmup_cosine
+  total_epochs: ${train.epochs}
+  # iMF uses Adam at 1e-4 with warmup followed by a constant learning rate.
+  warmup_epochs: 10
+  min_lr_ratio: 1.0
+
+eval:
+  checkpoint: rela_dit_meanflow.pt
