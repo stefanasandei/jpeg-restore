@@ -12,7 +12,7 @@ import torchvision.transforms.v2 as v2
 from utils import jpeg_compress
 
 
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
+IMAGE_EXTENSIONS = {".bmp", ".png", ".jpg", ".jpeg"}
 
 
 def configure_data_worker(_worker_id):

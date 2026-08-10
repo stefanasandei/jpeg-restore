@@ -12,7 +12,7 @@ from wandb.sdk.lib import runid
 
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 
 from checkpoint import load_checkpoint, save_checkpoint
 from dataset import HRDataset, configure_data_worker
@@ -23,36 +23,41 @@ from validation_metrics import RestorationMetrics
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def train_step(model, batch, optimizer, device, *, exploration=1, loss_kwargs=None):
+def train_step(model, batch, optimizer, device, exploration=1):
     if exploration < 1:
         raise ValueError("exploration must be positive")
-
     compressed, clean, quality = (
         tensor.to(device, non_blocking=True) for tensor in batch
     )
-    loss_kwargs = dict(loss_kwargs or {})
+    loss_kwargs = {}
+
     if exploration > 1:
-        if "noise" in loss_kwargs:
-            raise ValueError("fixed noise cannot be used with exploration")
-        if "t" not in loss_kwargs:
-            loss_kwargs["t"] = model.sample_timestep(
-                clean, loss_kwargs.get("generator")
-            )
-        best = None
+        timestep = model.sample_timestep(clean)
+        best_loss = best_noise = None
         with torch.no_grad():
             # Explorative Modeling: https://arxiv.org/abs/2607.27372
             for _ in range(exploration):
-                noise = torch.randn_like(
-                    clean, generator=loss_kwargs.get("generator")
-                )
-                candidate = model.compute_loss(
-                    compressed, clean, quality, noise=noise, **loss_kwargs
+                noise = torch.randn_like(clean)
+                loss = model.compute_loss(
+                    compressed,
+                    clean,
+                    quality,
+                    t=timestep,
+                    noise=noise,
+                    reduction="none",
                 )["loss"]
-                if best is None or candidate < best[0]:
-                    best = candidate, noise
-        loss_kwargs["noise"] = best[1]
+                if best_loss is None:
+                    best_loss, best_noise = loss, noise
+                    continue
+                improved = loss < best_loss
+                best_loss = torch.where(improved, loss, best_loss)
+                improved = improved[:, None, None, None]
+                best_noise = torch.where(improved, noise, best_noise)
+        loss_kwargs = {"t": timestep, "noise": best_noise}
 
-    losses = model.compute_loss(compressed, clean, quality, **loss_kwargs)
+    losses = utils.compute_loss(
+        model, compressed, clean, quality, **loss_kwargs
+    )
     loss = losses["loss"]
     if not torch.isfinite(loss):
         raise FloatingPointError("non-finite training loss")
@@ -73,45 +78,57 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
     read_semaphore = loader_context.Semaphore(read_concurrency)
 
     # 1. data
-    dataset_paths = lambda cfg, names: [path for name in names for path in cfg.dataset[name]]
+    dataset_paths = lambda names: [
+        path for name in names for path in cfg.dataset[name]
+    ]
+    quality_range = tuple(train_cfg.get("quality_range", (10, 95)))
 
     train_ds = HRDataset(
-        dataset_paths(cfg, train_cfg.datasets),
+        dataset_paths(train_cfg.datasets),
         train=True,
         crop_size=train_cfg.get("crop_size", 128),
+        quality_range=quality_range,
         read_semaphore=read_semaphore,
     )
     val_ds = HRDataset(
-        dataset_paths(cfg, cfg.eval.datasets),
+        dataset_paths(train_cfg.get("val_datasets", cfg.eval.datasets)),
         train=False,
         crop_size=train_cfg.get("val_crop_size", train_cfg.get("crop_size", 128)),
+        quality_range=tuple(train_cfg.get("val_quality_range", quality_range)),
         read_semaphore=read_semaphore,
     )
+    val_max_images = train_cfg.get("val_max_images")
+    if val_max_images is not None:
+        if val_max_images < 1:
+            raise ValueError("train.val_max_images must be positive")
+        val_ds = Subset(
+            val_ds, range(min(val_max_images, len(val_ds)))
+        )
     batches = len(train_ds) // train_cfg.batch_size
     print(f"training images={len(train_ds)}, batches={batches}")
 
+    loader_kwargs = {
+        "pin_memory": True,
+        "persistent_workers": True,
+        "multiprocessing_context": loader_context,
+        "worker_init_fn": configure_data_worker,
+    }
     train_loader = DataLoader(
         train_ds,
         batch_size=train_cfg.batch_size,
         shuffle=True,
         num_workers=8,
-        pin_memory=True,
         prefetch_factor=4,
-        persistent_workers=True,
-        multiprocessing_context=loader_context,
-        worker_init_fn=configure_data_worker,
         in_order=False,
         drop_last=True,
+        **loader_kwargs,
     )
     val_loader = DataLoader(
         val_ds,
         batch_size=train_cfg.batch_size,
         shuffle=False,
         num_workers=2,
-        pin_memory=True,
-        persistent_workers=True,
-        multiprocessing_context=loader_context,
-        worker_init_fn=configure_data_worker,
+        **loader_kwargs,
     )
 
     # 2. model
@@ -138,7 +155,8 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
         )
     utils.compile_model(model, train_cfg.get("compile"))
 
-    checkpoint_path = Path(hydra.utils.get_original_cwd()) / f"{cfg.model_name}.pt"
+    checkpoint_name = train_cfg.get("checkpoint_name", f"{cfg.model_name}.pt")
+    checkpoint_path = Path(hydra.utils.get_original_cwd()) / checkpoint_name
     val_metrics = RestorationMetrics(device)
 
     # 4. training!
@@ -159,7 +177,7 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
                     batch,
                     optimizer,
                     device,
-                    exploration=train_cfg.get("exploration", 1),
+                    train_cfg.get("exploration", 1),
                 )
             except FloatingPointError:
                 print("Unstable step detected. Skipping batch.")
@@ -197,7 +215,9 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
         for i, batch in enumerate(val_loader):
             if i == 0:
                 vis_batch = batch[:2]
-            compressed, clean, quality = tuple(tensor.to(device, non_blocking=True) for tensor in batch)
+            compressed, clean, quality = tuple(
+                tensor.to(device, non_blocking=True) for tensor in batch
+            )
 
             with torch.no_grad():
                 restored, _ = utils.predict(model, compressed, generator)
@@ -208,7 +228,7 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
         extra_losses = ", ".join(
             f"train_{name}={value:.6f}"
             for name, value in train_losses.items()
-            if name not in {"loss"}
+            if name != "loss"
         )
         if extra_losses:
             extra_losses = ", " + extra_losses

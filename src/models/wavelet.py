@@ -14,7 +14,7 @@ def haar_encode(image):
 
     low = (top_left + top_right + bottom_left + bottom_right) * 0.5
     # Match PyWavelets' (LL, LH, HL, HH) channel convention, which is also the
-    # convention used by the official DiMSUM implementation.  The distinction
+    # convention used by the original wavelet implementation. The distinction
     # matters here because Mamba is sensitive to the order of the subbands.
     vertical = (top_left + top_right - bottom_left - bottom_right) * 0.5
     horizontal = (top_left - top_right + bottom_left - bottom_right) * 0.5

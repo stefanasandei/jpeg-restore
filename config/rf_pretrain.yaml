@@ -1,6 +1,5 @@
 defaults:
   - base
-  - override model: dimsum_rf
   - _self_
 
 dataset:
@@ -20,27 +19,16 @@ dataset:
 train:
   datasets: [df2k_train, lsdir_00, lsdir_01]
   start_checkpoint: ""
-  # Two official LSDIR download shards contain about 10k images. Together
-  # with 3,450 DF2K images and batch size 32 this is about 420 updates/epoch;
-  # 300 epochs therefore gives about 126k optimizer updates.
   epochs: 200
   crop_size: 128
   val_crop_size: 128
   batch_size: 32
   lr: 3e-4
-  exploration: 2
+  exploration: 3
   sample_every: 10
   val_seed: 0
   compile:
     enabled: true
-
-# Pure conditional velocity loss over clean-predicted, normalized Haar
-# restoration residuals. Paired endpoint/DCT losses belong in later restoration
-# fine-tuning; the FBCNN-style quality-factor loss stays on for QF conditioning.
-model:
-  endpoint_loss_weight: 0.0
-  dct_loss_weight: 0.0
-  quality_loss_weight: 0.1
 
 lr_scheduler:
   _target_: schedulers.warmup_cosine

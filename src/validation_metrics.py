@@ -3,7 +3,7 @@ from torchmetrics.image import PeakSignalNoiseRatio
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 
 
-QUALITY_BANDS = ((10, 29), (30, 49))
+QUALITY_BANDS = ((5, 9), (10, 29), (30, 49))
 
 
 class RestorationMetrics:
@@ -22,7 +22,7 @@ class RestorationMetrics:
             band: PeakSignalNoiseRatio(data_range=1.0).to(device)
             for band in QUALITY_BANDS
         }
-        
+
         self.reset()
 
     def reset(self):
@@ -37,6 +37,7 @@ class RestorationMetrics:
             metric.reset()
         self.loss = 0.0
         self.baseline_loss = 0.0
+        self.quality_counts = {band: 0 for band in QUALITY_BANDS}
         self.batches = 0
 
     def update(self, restored, compressed, clean, quality):
@@ -54,6 +55,7 @@ class RestorationMetrics:
             low, high = band
             selected = (quality_factors >= low) & (quality_factors <= high)
             if selected.any():
+                self.quality_counts[band] += selected.sum().item()
                 self.quality_psnr[band].update(restored[selected], clean[selected])
                 self.baseline_quality_psnr[band].update(
                     compressed[selected], clean[selected]
@@ -74,6 +76,8 @@ class RestorationMetrics:
             "ssim_gain": ssim - self.baseline_ssim.compute().item(),
         }
         for band, metric in self.quality_psnr.items():
+            if not self.quality_counts[band]:
+                continue
             name = f"qf_{band[0]}_{band[1]}"
             quality_psnr = metric.compute().item()
             baseline_psnr = self.baseline_quality_psnr[band].compute().item()

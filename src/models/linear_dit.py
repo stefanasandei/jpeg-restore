@@ -48,15 +48,42 @@ class TimestepEmbedder(nn.Module):
 
 
 class LiteLA(nn.Module):
-    """SANA lightweight linear attention."""
+    """SANA lightweight linear attention with optional rank enhancement.
 
-    def __init__(self, hidden_size, linear_head_dim=32, eps=1e-8, qk_norm=False):
+    ``rank_enhance_kernel`` adds the depth-wise ``W_d V`` branch proposed by
+    RELA.  It keeps the global attention linear in the token count while
+    restoring a full-rank local path.  A value of zero preserves the original
+    SANA implementation and its checkpoint layout.
+    """
+
+    def __init__(
+        self,
+        hidden_size,
+        linear_head_dim=32,
+        eps=1e-8,
+        qk_norm=False,
+        rank_enhance_kernel=0,
+    ):
         super().__init__()
+        if rank_enhance_kernel and rank_enhance_kernel % 2 == 0:
+            raise ValueError("rank_enhance_kernel must be zero or an odd integer")
         self.num_heads = hidden_size // linear_head_dim
         self.head_dim = hidden_size // self.num_heads
         self.eps = eps
         self.qkv = nn.Linear(hidden_size, hidden_size * 3, bias=False)
         self.proj = nn.Linear(hidden_size, hidden_size)
+        self.rank_enhance = (
+            nn.Conv2d(
+                hidden_size,
+                hidden_size,
+                rank_enhance_kernel,
+                padding=rank_enhance_kernel // 2,
+                groups=hidden_size,
+                bias=False,
+            )
+            if rank_enhance_kernel
+            else None
+        )
         if qk_norm:
             self.q_norm = nn.RMSNorm(hidden_size, eps=1e-5)
             self.k_norm = nn.RMSNorm(hidden_size, eps=1e-5)
@@ -64,9 +91,19 @@ class LiteLA(nn.Module):
             self.q_norm = nn.Identity()
             self.k_norm = nn.Identity()
 
-    def forward(self, x):
+    def forward(self, x, height=None, width=None):
         batch, tokens, channels = x.shape
         q, k, v = self.qkv(x).reshape(batch, tokens, 3, channels).unbind(2)
+        local = None
+        if self.rank_enhance is not None:
+            if height is None or width is None or tokens != height * width:
+                raise ValueError(
+                    "height and width matching the token count are required "
+                    "for rank-enhanced linear attention"
+                )
+            local = self.rank_enhance(
+                v.transpose(1, 2).reshape(batch, channels, height, width)
+            ).flatten(2).transpose(1, 2)
         dtype = q.dtype
         q = self.q_norm(q).transpose(-1, -2)
         k = self.k_norm(k).transpose(-1, -2)
@@ -85,6 +122,8 @@ class LiteLA(nn.Module):
             out = out.float()
         out = out[:, :, :-1] / (out[:, :, -1:] + self.eps)
         out = out.to(dtype).reshape(batch, channels, tokens).permute(0, 2, 1)
+        if local is not None:
+            out = out + local
         return self.proj(out)
 
 
@@ -300,15 +339,21 @@ class SanaBlock(nn.Module):
         use_cross_attention=True,
         use_window_attention=False,
         window_size=8,
+        rank_enhance_kernel=0,
     ):
         super().__init__()
         self.norm1 = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
         self.attn = (
             ShiftedWindowAttention(hidden_size, num_heads, window_size)
             if use_window_attention
-            else LiteLA(hidden_size, linear_head_dim, eps=1e-8, qk_norm=qk_norm)
+            else LiteLA(
+                hidden_size,
+                linear_head_dim,
+                eps=1e-8,
+                qk_norm=qk_norm,
+                rank_enhance_kernel=rank_enhance_kernel,
+            )
         )
-        self.use_window_attention = use_window_attention
         self.cross_attn = (
             MultiHeadCrossAttention(hidden_size, num_heads, qk_norm=cross_norm)
             if use_cross_attention
@@ -324,11 +369,7 @@ class SanaBlock(nn.Module):
             self.scale_shift_table[None] + timestep.reshape(batch, 6, -1)
         ).chunk(6, dim=1)
         attention_input = modulate(self.norm1(x), shift_msa, scale_msa)
-        attention_output = (
-            self.attn(attention_input, height, width)
-            if self.use_window_attention
-            else self.attn(attention_input)
-        )
+        attention_output = self.attn(attention_input, height, width)
         x = x + gate_msa * attention_output
         if self.cross_attn is not None:
             x = x + self.cross_attn(x, condition)
@@ -350,6 +391,22 @@ class T2IFinalLayer(nn.Module):
         return self.linear(modulate(self.norm_final(x), shift, scale))
 
 
+class RearrangedPatchEmbed(nn.Module):
+    """Expose every patch coefficient before a 1x1 channel projection."""
+
+    def __init__(self, in_channels, hidden_size, patch_size):
+        super().__init__()
+        self.unshuffle = nn.PixelUnshuffle(patch_size)
+        self.projection = nn.Conv2d(
+            in_channels * patch_size**2, hidden_size, 1
+        )
+        nn.init.dirac_(self.projection.weight)
+        nn.init.zeros_(self.projection.bias)
+
+    def forward(self, image):
+        return self.projection(self.unshuffle(image))
+
+
 class SanaLinearDiT(nn.Module):
     def __init__(
         self,
@@ -368,13 +425,30 @@ class SanaLinearDiT(nn.Module):
         use_cross_attention=True,
         window_size=8,
         window_block_interval=0,
+        rank_enhance_kernel=0,
+        rearranged_patch_embed=False,
+        quality_split=None,
+        positional_reference_size=None,
     ):
         super().__init__()
+        if quality_split is not None and not 0 < quality_split < depth:
+            raise ValueError("quality_split must be in (0, depth)")
+        if positional_reference_size is not None and positional_reference_size < 2:
+            raise ValueError("positional_reference_size must be at least two")
         self.out_channels = out_channels
         self.patch_size = patch_size
         self.hidden_size = hidden_size
-        self.x_embedder = nn.Conv2d(
-            in_channels, hidden_size, kernel_size=patch_size, stride=patch_size
+        self.quality_split = quality_split
+        self.positional_reference_size = positional_reference_size
+        self.x_embedder = (
+            RearrangedPatchEmbed(in_channels, hidden_size, patch_size)
+            if rearranged_patch_embed
+            else nn.Conv2d(
+                in_channels,
+                hidden_size,
+                kernel_size=patch_size,
+                stride=patch_size,
+            )
         )
         self.t_embedder = TimestepEmbedder(hidden_size)
         self.t_block = nn.Sequential(nn.SiLU(), nn.Linear(hidden_size, hidden_size * 6))
@@ -392,6 +466,21 @@ class SanaLinearDiT(nn.Module):
         else:
             self.condition = None
             self.condition_embedder = None
+        if quality_split is not None:
+            self.quality_head = nn.Sequential(
+                nn.Linear(hidden_size, hidden_size),
+                nn.SiLU(),
+                nn.Linear(hidden_size, 1),
+                nn.Sigmoid(),
+            )
+            self.quality_embedder = nn.Sequential(
+                nn.Linear(1, hidden_size),
+                nn.SiLU(),
+                nn.Linear(hidden_size, hidden_size),
+            )
+        else:
+            self.quality_head = None
+            self.quality_embedder = None
         self.blocks = nn.ModuleList(
             [
                 SanaBlock(
@@ -406,6 +495,7 @@ class SanaLinearDiT(nn.Module):
                         window_block_interval > 0 and (index + 1) % window_block_interval == 0
                     ),
                     window_size=window_size,
+                    rank_enhance_kernel=rank_enhance_kernel,
                 )
                 for index in range(depth)
             ]
@@ -421,20 +511,47 @@ class SanaLinearDiT(nn.Module):
                     nn.init.constant_(module.bias, 0)
 
         self.apply(basic_init)
-        nn.init.xavier_uniform_(self.x_embedder.weight.view(self.x_embedder.weight.shape[0], -1))
+        if isinstance(self.x_embedder, nn.Conv2d):
+            nn.init.xavier_uniform_(
+                self.x_embedder.weight.view(self.x_embedder.weight.shape[0], -1)
+            )
         nn.init.normal_(self.t_embedder.mlp[0].weight, std=0.02)
         nn.init.normal_(self.t_embedder.mlp[2].weight, std=0.02)
         nn.init.normal_(self.t_block[1].weight, std=0.02)
         if self.condition_embedder is not None:
             nn.init.normal_(self.condition_embedder[0].weight, std=0.02)
             nn.init.normal_(self.condition_embedder[2].weight, std=0.02)
+        if self.quality_head is not None:
+            nn.init.zeros_(self.quality_head[2].weight)
+            nn.init.zeros_(self.quality_head[2].bias)
+            nn.init.normal_(self.quality_embedder[0].weight, std=0.02)
+            nn.init.zeros_(self.quality_embedder[2].weight)
+            nn.init.zeros_(self.quality_embedder[2].bias)
 
     @staticmethod
-    def positional_embedding(height, width, dim, device, dtype):
+    def positional_embedding(
+        height, width, dim, device, dtype, reference_size=None
+    ):
         assert dim % 4 == 0
+        if reference_size is None:
+            y_coordinates = torch.arange(
+                height, device=device, dtype=torch.float32
+            )
+            x_coordinates = torch.arange(
+                width, device=device, dtype=torch.float32
+            )
+        else:
+            # Interpolate the pretraining coordinate domain instead of
+            # extrapolating sin/cos positions never seen on the 16x16 grid.
+            y_coordinates = torch.linspace(
+                0, reference_size - 1, height, device=device
+            )
+            x_coordinates = torch.linspace(
+                0, reference_size - 1, width, device=device
+            )
         y, x = torch.meshgrid(
-            torch.arange(height, device=device, dtype=torch.float32),
-            torch.arange(width, device=device, dtype=torch.float32),
+            y_coordinates,
+            x_coordinates,
             indexing="ij",
         )
         omega = torch.arange(dim // 4, device=device, dtype=torch.float32) / (dim // 4)
@@ -456,16 +573,32 @@ class SanaLinearDiT(nn.Module):
         x = self.x_embedder(image)
         height, width = x.shape[-2:]
         x = x.flatten(2).transpose(1, 2)
-        x = x + self.positional_embedding(height, width, self.hidden_size, x.device, x.dtype)
+        x = x + self.positional_embedding(
+            height,
+            width,
+            self.hidden_size,
+            x.device,
+            x.dtype,
+            self.positional_reference_size,
+        )
 
         t = self.t_embedder(timestep)
         t_block = self.t_block(t)
         condition = None
         if self.condition_embedder is not None:
             condition = self.condition_embedder(self.condition.expand(batch, -1, -1))
-        for block in self.blocks:
+        split = self.quality_split or len(self.blocks)
+        for block in self.blocks[:split]:
             x = block(x, condition, t_block, height, width)
-        return self.unpatchify(self.final_layer(x, t), height, width)
+        quality = None
+        if self.quality_head is not None:
+            quality = self.quality_head(x.mean(dim=1))
+            t = t + self.quality_embedder(quality)
+            t_block = self.t_block(t)
+        for block in self.blocks[split:]:
+            x = block(x, condition, t_block, height, width)
+        output = self.unpatchify(self.final_layer(x, t), height, width)
+        return (output, quality) if quality is not None else output
 
 
 class LinearDiTRestoration(SanaLinearDiT):
@@ -483,5 +616,6 @@ class LinearDiTRestoration(SanaLinearDiT):
         timestep = torch.full(
             (image.shape[0],), self.timestep, device=image.device, dtype=image.dtype
         )
-        restored = super().forward(image, timestep)[..., :h, :w]
-        return restored, None
+        output = super().forward(image, timestep)
+        restored, quality = output if isinstance(output, tuple) else (output, None)
+        return restored[..., :h, :w], quality

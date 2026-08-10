@@ -1,0 +1,9 @@
+defaults:
+  - rf_pretrain
+  - override model: rela_dit
+  - _self_
+
+train:
+  start_checkpoint: "rela_dit.pt"
+  epochs: 200
+  exploration: 3

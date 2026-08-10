@@ -18,7 +18,7 @@ from utils import jpeg_compress, predict
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-QUALITY_FACTORS = [10, 20, 30, 40]
+QUALITY_FACTORS = [5, 10, 20]
 
 
 def load_model(cfg, checkpoint):
@@ -49,7 +49,9 @@ def main(cfg: DictConfig) -> None:
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
     ])
-    lpips = LearnedPerceptualImagePatchSimilarity(normalize=True).to(device)
+    lpips = LearnedPerceptualImagePatchSimilarity(
+        net_type="alex", normalize=True
+    ).to(device)
     generator = torch.Generator(device=device).manual_seed(cfg.eval.get("seed", 0))
     results = {
         quality: {"psnr": [], "ssim": [], "lpips": []}
