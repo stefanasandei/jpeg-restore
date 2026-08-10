@@ -12,7 +12,7 @@ from models import HaarWaveletRestoration
 from utils import unpack_model_output
 
 
-MODEL_NAMES = ("restormer", "adm_unet", "linear_dit", "dimsum")
+MODEL_NAMES = ("restormer", "adm_unet", "linear_dit")
 CONFIG_DIR = Path(__file__).resolve().parents[1] / "config" / "model"
 DTYPES = {
     "bfloat16": torch.bfloat16,
@@ -24,7 +24,6 @@ CHANNEL_ARGUMENTS = {
     "restormer": ("inp_channels", "out_channels"),
     "adm_unet": ("in_channels", "out_channels"),
     "linear_dit": ("in_channels", "out_channels"),
-    "dimsum": ("in_channels", "out_channels"),
 }
 
 

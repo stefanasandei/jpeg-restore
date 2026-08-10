@@ -3,3 +3,4 @@ outputs/
 *.pt
 __pycache__
 wandb
+nohup.out

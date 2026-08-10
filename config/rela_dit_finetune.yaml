@@ -1,0 +1,37 @@
+defaults:
+  - rela_dit_pretrain
+  - _self_
+
+train:
+  datasets: [df2k_train, lsdir_00, lsdir_01]
+  start_checkpoint: rela_dit_finetune.pt
+  checkpoint_name: rela_dit_finetune.pt
+  epochs: 20
+  crop_size: 368
+  val_crop_size: 368
+  quality_range: [5, 40]
+  val_quality_range: [5, 20]
+  batch_size: 4
+  lr: 5e-5
+  exploration: 1
+  sample_every: 5
+  val_datasets: [df2k_val]
+  val_max_images: 20
+
+lr_scheduler:
+  _target_: schedulers.warmup_cosine
+  total_epochs: ${train.epochs}
+  warmup_epochs: 2
+  min_lr_ratio: 0.1
+
+model:
+  model:
+    # Pretraining used a 16x16 token grid; interpolate that coordinate domain.
+    positional_reference_size: 16
+  sample_steps: 10
+  sampling_method: euler
+
+eval:
+  datasets: [live1]
+  checkpoint: rela_dit_finetune.pt
+  seed: 0

@@ -1,0 +1,28 @@
+# @package _global_
+model_name: rela_dit
+model:
+  _target_: models.RectifiedFlow
+  sample_steps: 50
+  timestep_scale: 1000.0
+  min_velocity_denom: 0.05
+  time_logit_mean: -0.8
+  time_logit_std: 0.8
+  sampling_method: heun
+  residual_scale: 16.0
+
+  model:
+    _target_: models.LinearDiTPalette
+    wavelet_levels: 2
+    out_channels: 3
+    patch_size: 2
+    hidden_size: 576
+    rearranged_patch_embed: true
+    depth: 16
+    num_heads: 18
+    mlp_ratio: 2.5
+    linear_head_dim: 32
+
+    rank_enhance_kernel: 5
+    window_block_interval: 0
+    use_cross_attention: false
+    quality_split: 3

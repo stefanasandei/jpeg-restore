@@ -1,3 +1,5 @@
-from .dimsum import DiMSUMPalette, DiMSUMRectifiedFlow
+from .palette import LinearDiTPalette, Palette
+from .rectified_flow import RectifiedFlow
 
-__all__ = ["DiMSUMPalette", "DiMSUMRectifiedFlow"]
+
+__all__ = ["LinearDiTPalette", "Palette", "RectifiedFlow"]
