@@ -1,19 +1,17 @@
 import hydra
 from hydra.utils import instantiate
 import numpy as np
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 
 import torch
-from torchmetrics.functional.image import peak_signal_noise_ratio
-from torchmetrics.functional.image import structural_similarity_index_measure
-from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 import torchvision.transforms.v2 as v2
 
 from checkpoint import model_state
 from dataset import image_paths
+from metrics import MetricSuite
 from utils import jpeg_compress, predict
 
 
@@ -49,12 +47,13 @@ def main(cfg: DictConfig) -> None:
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
     ])
-    lpips = LearnedPerceptualImagePatchSimilarity(
-        net_type="alex", normalize=True
-    ).to(device)
+    metric_options = OmegaConf.to_container(
+        cfg.eval.get("metric_options", {}), resolve=True
+    )
+    metrics = MetricSuite(cfg.eval.metrics, metric_options, device).to(device).eval()
     generator = torch.Generator(device=device).manual_seed(cfg.eval.get("seed", 0))
     results = {
-        quality: {"psnr": [], "ssim": [], "lpips": []}
+        quality: {name: [] for name in metrics.metrics}
         for quality in QUALITY_FACTORS
     }
 
@@ -70,26 +69,15 @@ def main(cfg: DictConfig) -> None:
                 if model is not None:
                     restored, _ = predict(model, compressed, generator)
 
-                results[quality]["psnr"].append(
-                    peak_signal_noise_ratio(
-                        restored, clean_tensor, data_range=1.0
-                    ).item()
-                )
-                results[quality]["ssim"].append(
-                    structural_similarity_index_measure(
-                        restored, clean_tensor, data_range=1.0
-                    ).item()
-                )
-                results[quality]["lpips"].append(
-                    lpips(restored, clean_tensor).item()
-                )
+                for name, value in metrics(restored, clean_tensor).items():
+                    results[quality][name].append(value)
 
-    table = pd.DataFrame({
-        "QF": QUALITY_FACTORS,
-        "PSNR": [np.mean(results[q]["psnr"]) for q in QUALITY_FACTORS],
-        "SSIM": [np.mean(results[q]["ssim"]) for q in QUALITY_FACTORS],
-        "LPIPS": [np.mean(results[q]["lpips"]) for q in QUALITY_FACTORS],
+    table_data = {"QF": QUALITY_FACTORS}
+    table_data.update({
+        label: [np.mean(results[q][name]) for q in QUALITY_FACTORS]
+        for name, label in metrics.labels.items()
     })
+    table = pd.DataFrame(table_data)
     print(f"\n{', '.join(dataset_names)}")
     print(table)
 

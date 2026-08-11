@@ -1,0 +1,13 @@
+# @package _global_
+model_name: dit
+model:
+  _target_: models.DiTRestoration
+  in_channels: 3
+  out_channels: 3
+  patch_size: 2
+  # Approximately capacity-matched to RELA DiT (~65M parameters).
+  hidden_size: 480
+  depth: 16
+  num_heads: 8
+  mlp_ratio: 4.0
+  timestep: 0
