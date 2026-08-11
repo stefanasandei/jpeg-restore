@@ -1,6 +1,6 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 from utils import unpack_model_output
 
@@ -40,18 +40,27 @@ def haar_decode(coefficients):
 
 
 class HaarWaveletRestoration(nn.Module):
-    """Run a restoration model in a one-level Haar wavelet domain."""
+    """Run a restoration model after one or more levels of Haar encoding."""
 
-    def __init__(self, model):
+    def __init__(self, model, levels=1):
         super().__init__()
+        if levels < 1:
+            raise ValueError("levels must be positive")
         self.model = model
+        self.levels = levels
 
     def forward(self, image):
         height, width = image.shape[-2:]
-        pad_height = height % 2
-        pad_width = width % 2
+        multiple = 2**self.levels
+        pad_height = (multiple - height % multiple) % multiple
+        pad_width = (multiple - width % multiple) % multiple
         padded = image
         if pad_height or pad_width:
             padded = F.pad(image, (0, pad_width, 0, pad_height), mode="replicate")
-        restored, auxiliary = unpack_model_output(self.model(haar_encode(padded)))
-        return haar_decode(restored)[..., :height, :width], auxiliary
+        encoded = padded
+        for _ in range(self.levels):
+            encoded = haar_encode(encoded)
+        restored, auxiliary = unpack_model_output(self.model(encoded))
+        for _ in range(self.levels):
+            restored = haar_decode(restored)
+        return restored[..., :height, :width], auxiliary

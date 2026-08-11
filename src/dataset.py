@@ -1,3 +1,4 @@
+import glob
 import os
 import random
 from io import BytesIO
@@ -21,11 +22,22 @@ def configure_data_worker(_worker_id):
 
 
 def image_paths(paths):
+    def discover(path):
+        if any(ch in path for ch in "*?["):
+            yield from glob.glob(path, recursive=True)
+        elif os.path.isdir(path):
+            yield from (
+                os.path.join(path, filename)
+                for filename in os.listdir(path)
+                if os.path.splitext(filename)[1].lower() in IMAGE_EXTENSIONS
+            )
+
     return sorted(
-        os.path.join(path, filename)
-        for path in paths
-        for filename in os.listdir(path)
-        if os.path.splitext(filename)[1].lower() in IMAGE_EXTENSIONS
+        path
+        for base in paths
+        for path in discover(base)
+        if os.path.isfile(path)
+        and os.path.splitext(path)[1].lower() in IMAGE_EXTENSIONS
     )
 
 

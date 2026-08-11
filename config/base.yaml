@@ -5,8 +5,7 @@ defaults:
 dataset:
   df2k_train: [/mnt/projects/models/01-datasets/DF2K/DF2K_train_HR]
   df2k_val: [/mnt/projects/models/01-datasets/DF2K/DF2K_valid_HR]
-  bsds500: [/mnt/sda3/Documents/Datasets/BSDS500/images/test]
-  urban100: [/mnt/sda3/Documents/Datasets/Urban100]
+  urban100: [/mnt/projects/models/01-datasets/Urban100/data/data_*/img_*_SRF_2_HR.png]
   live1: [/mnt/projects/models/01-datasets/LIVE1]
 
 train:
@@ -29,3 +28,15 @@ train:
 eval:
   datasets: [df2k_val]
   checkpoint: ""
+  metrics: [psnr, ssim, lpips, dists, musiq, maniqa, clipiqa]
+  metric_options:
+    lpips:
+      net_type: alex
+    musiq:
+      model_name: musiq
+    maniqa:
+      model_name: maniqa
+    clipiqa:
+      # Reuse the model reported by `hf cache ls` without network access.
+      model_name: openai/clip-vit-base-patch16
+      local_files_only: true

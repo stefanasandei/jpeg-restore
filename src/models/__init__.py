@@ -1,4 +1,5 @@
 from models.adm_unet import ADMRestoration
+from models.dit import DiT, DiTRestoration
 from models.fbcnn import FBCNN
 from models.linear_dit import LinearDiTRestoration
 from models.restormer import RestormerRestoration
@@ -11,3 +12,18 @@ MODELS = {
     "adm_unet": ADMRestoration,
     "linear_dit": LinearDiTRestoration,
 }
+
+__all__ = [
+    "FBCNN",
+    "MODELS",
+    "ADMRestoration",
+    "DiT",
+    "DiTRestoration",
+    "HaarWaveletRestoration",
+    "LinearDiTPalette",
+    "LinearDiTRestoration",
+    "MeanFlow",
+    "Palette",
+    "RectifiedFlow",
+    "RestormerRestoration",
+]
