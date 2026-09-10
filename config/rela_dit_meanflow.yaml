@@ -4,8 +4,7 @@ defaults:
   - _self_
 
 train:
-  # MeanFlow is a standalone pretraining objective, not an RF distillation run.
-  checkpoint_name: rela_dit_meanflow.pt
+  checkpoint_name: null
   quality_range: [5, 40]
   val_quality_range: [5, 20]
   lr: 5e-5
