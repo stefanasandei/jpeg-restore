@@ -5,3 +5,8 @@ __pycache__
 wandb
 nohup.out
 results
+paper
+poster
+.codex
+.agents
+.ruff_cache
