@@ -46,33 +46,33 @@ python3 ./src/sample.py ./path/to/image.jpeg --checkpoint model.pt
 Train from scratch using the provided script:
 
 ```bash
-python src/train.py --config-name rela_dit_meanflow
+python3 ./src/train.py --config-name rela_dit_meanflow
 ```
 
 Check the `./config` folder for more training and eval configurations, used in other test runs and experiments.
 
 ## 📊 Benchmark Results
 
-Check our paper for the full results. Current evaluations use 2-step inference for our model.
+Check our paper for the full results. Current evaluations use 2-step inference for our model. Metrics at QF20:
 
-| Dataset   | Method   |  LPIPS ↓   |  DISTS ↓   |  MUSIQ ↑  |  MANIQA ↑  | CLIPIQA ↑  |
-| --------- | -------- | :--------: | :--------: | :-------: | :--------: | :--------: |
-| LIVE-1    | SODiff   |   0.1237   | **0.0763** | **74.11** | **0.5272** | **0.7587** |
-| LIVE-1    | **Ours** | **0.0917** |   0.1008   |   71.90   |   0.3751   |   0.7358   |
-| Urban100  | SODiff   |   0.0846   | **0.0734** | **72.63** | **0.5561** |   0.6733   |
-| Urban100  | **Ours** | **0.0538** |   0.1368   |   70.24   |   0.4682   | **0.7172** |
-| DIV2K-val | SODiff   |   0.1295   | **0.0622** | **66.49** | **0.3984** |   0.6398   |
-| DIV2K-val | **Ours** | **0.0995** |   0.0828   |   64.62   |   0.3427   | **0.6820** |
+| Dataset   | Method |  LPIPS ↓   |  DISTS ↓   |  MUSIQ ↑  |  MANIQA ↑  | CLIPIQA ↑  |
+| --------- | ------ | :--------: | :--------: | :-------: | :--------: | :--------: |
+| LIVE-1    | SODiff |   0.1237   | **0.0763** | **74.11** | **0.5272** | **0.7587** |
+| LIVE-1    | *Ours* | **0.0917** |   0.1008   |   71.90   |   0.3751   |   0.7358   |
+| Urban100  | SODiff |   0.0846   | **0.0734** | **72.63** | **0.5561** |   0.6733   |
+| Urban100  | *Ours* | **0.0538** |   0.1368   |   70.24   |   0.4682   | **0.7172** |
+| DIV2K-val | SODiff |   0.1295   | **0.0622** | **66.49** | **0.3984** |   0.6398   |
+| DIV2K-val | *Ours* | **0.0995** |   0.0828   |   64.62   |   0.3427   | **0.6820** |
 
 System-level efficiency at 1024×1024, batch size 1, single RTX 3090:
 
-| Method   | Params (M) |  NFE  | Latency (s) | Throughput (img/s) |
-| -------- | :--------: | :---: | :---------: | :----------------: |
-| FBCNN    |    70.1    |   1   |    0.275    |        3.63        |
-| SODiff   |    1288    |   1   |    0.610    |        1.64        |
-| SUPIR    |    4490    |  50   |    48.66    |       0.0206       |
-| **Ours** |  **65.3**  | **2** |  **0.124**  |      **8.05**      |
-| **Ours** |  **65.3**  | **1** |  **0.118**  |     **17.35**      |
+| Method | Params (M) |  NFE  | Latency (s) | Throughput (img/s) |
+| ------ | :--------: | :---: | :---------: | :----------------: |
+| FBCNN  |    70.1    |   1   |    0.275    |        3.63        |
+| SODiff |    1288    |   1   |    0.610    |        1.64        |
+| SUPIR  |    4490    |  50   |    48.66    |       0.0206       |
+| *Ours* |  **65.3**  | **2** |  **0.124**  |      **8.05**      |
+| *Ours* |  **65.3**  | **1** |  **0.118**  |     **17.35**      |
 
 > *Note:* Pretrained large-scale t2i diffusion models remain stronger under extreme compression, due to their texture & patterns knowledge. This model is optimized for low latency, edge environments where high throughput is critical.
 
