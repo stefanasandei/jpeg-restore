@@ -3,6 +3,7 @@
 [![arXiv](https://img.shields.io/badge/arXiv-2608.28730-b31b1b.svg)](https://arxiv.org/abs/2608.28730)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-weights-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/asandeistefan/jpeg-restore-meanflows)
 
 *We propose a model for generative JPEG restoration capable of up to 20 img/s, at 720p resolution on a single RTX 3090.*
 
@@ -19,7 +20,7 @@
 
 Requirements: Python 3.12+, Pytorch 2.0+, any GPU with at least 1GB of VRAM.
 
-Model checkpoint: [will be released soon!](https://examaple.com)
+Model checkpoint: [huggingface](https://huggingface.co/asandeistefan/jpeg-restore-meanflows)
 
 ### Installation
 
