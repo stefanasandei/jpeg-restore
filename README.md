@@ -52,6 +52,10 @@ python3 ./src/train.py --config-name rela_dit_meanflow
 
 Check the `./config` folder for more training and eval configurations, used in other test runs and experiments.
 
+### 3. Evaluation
+
+See [evaluation.md](./evaluation.md) for full-image quality metrics, performance benchmarks, and the other models used in the paper.
+
 ## 📊 Benchmark Results
 
 Check our paper for the full results. Current evaluations use 2-step inference for our model. Metrics at QF20:

@@ -1,0 +1,161 @@
+defaults:
+  - base
+  - _self_
+
+# DIV2K-val is distinct from the combined DF2K validation pool.
+dataset:
+  div2k_val: [/mnt/projects/models/01-datasets/DIV2K/DIV2K_valid_HR]
+
+eval:
+  mode: quality
+  models: [jpeg]
+  datasets: [live1, urban100, div2k_val]
+  quality_factors: [5, 10, 20]
+  metrics: [psnr, ssim, lpips, dists, musiq, maniqa, clipiqa]
+  seed: 0
+  device: auto
+  metric_device: null
+  dtype: float32
+  max_images: null
+  save_images: false
+  output_dir: outputs/evaluation/${now:%Y%m%d_%H%M%S}
+  overwrite: false
+  continue_on_error: true
+  hash_weights: true
+
+  performance:
+    sizes: [[1024, 1024]]  # [height, width]; square sizes are not video resolutions.
+    batch_sizes: [1]
+    quality_factor: 10
+    warmup: 5
+    iterations: 20
+
+  # Shared checkpoint paths make sampling ablations use identical weights.
+  checkpoints:
+    meanflow: null
+    rectified_flow: null
+
+  model_specs:
+    jpeg:
+      kind: jpeg
+    meanflow_1:
+      kind: native
+      architecture: rela_dit_meanflow
+      checkpoint: ${eval.checkpoints.meanflow}
+      steps: 1
+      compile: false
+    meanflow_2:
+      kind: native
+      architecture: rela_dit_meanflow
+      checkpoint: ${eval.checkpoints.meanflow}
+      steps: 2
+      compile: false
+    rf_euler_20:
+      kind: native
+      architecture: rela_dit
+      checkpoint: ${eval.checkpoints.rectified_flow}
+      steps: 20
+      solver: euler
+    rf_euler_50:
+      kind: native
+      architecture: rela_dit
+      checkpoint: ${eval.checkpoints.rectified_flow}
+      steps: 50
+      solver: euler
+    rf_heun_20:
+      kind: native
+      architecture: rela_dit
+      checkpoint: ${eval.checkpoints.rectified_flow}
+      steps: 20
+      solver: heun
+    rf_heun_50:
+      kind: native
+      architecture: rela_dit
+      checkpoint: ${eval.checkpoints.rectified_flow}
+      steps: 50
+      solver: heun
+    fbcnn:
+      kind: fbcnn
+      repo: null
+      python: null
+      checkpoint: null
+    jdec:
+      kind: jdec
+      repo: null
+      python: null
+      checkpoint: null
+    promptcir:
+      kind: promptcir
+      repo: null
+      python: null
+      checkpoint: null
+    diffbir:
+      kind: diffbir
+      repo: null
+      python: null
+      # DiffBIR* in the quality table uses JPEG-specific retraining.
+      version: custom
+      checkpoint: null
+      config: null
+      steps: 50
+      solver: ddim
+      prompt: ""
+      sampling: {}
+    supir:
+      kind: supir
+      repo: null
+      python: null
+      # Official SUPIR YAML points to local SDXL and SUPIR-Q/F weights.
+      config: null
+      variant: Q
+      steps: 50
+      prompt: ""
+      sampling:
+        restoration_scale: -1
+        s_churn: 5
+        s_noise: 1.01
+        cfg_scale: 4.0
+        control_scale: 1.0
+        color_fix_type: Wavelet
+        use_linear_CFG: true
+        cfg_scale_start: 1.0
+    restormer_backbone:
+      kind: native
+      architecture: restormer
+      checkpoint: null
+      scope: backbone
+      representation: haar
+      wavelet_levels: 2
+    sana_backbone:
+      kind: native
+      architecture: linear_dit
+      checkpoint: null
+      scope: backbone
+      representation: haar
+      wavelet_levels: 2
+      overrides:
+        window_block_interval: 0
+    rela_backbone:
+      kind: native
+      architecture: linear_dit
+      checkpoint: null
+      scope: backbone
+      representation: haar
+      wavelet_levels: 2
+      overrides:
+        window_block_interval: 0
+        rank_enhance_kernel: 5
+    dit_backbone:
+      kind: native
+      architecture: dit
+      checkpoint: null
+      scope: backbone
+      representation: haar
+      wavelet_levels: 2
+    adm_backbone:
+      kind: native
+      architecture: adm_unet
+      checkpoint: null
+      scope: backbone
+      representation: haar
+      wavelet_levels: 2

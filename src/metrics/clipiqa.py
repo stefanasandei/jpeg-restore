@@ -3,7 +3,6 @@ import torch.nn.functional as F
 
 from .base import ImageMetric
 
-
 PROMPTS = (
     "Good image",
     "bad image",
@@ -36,9 +35,11 @@ class CLIPIQA(ImageMetric):
         except ImportError as error:
             raise ImportError("CLIPIQA requires transformers") from error
 
-        self.model = CLIPModel.from_pretrained(
-            model_name, local_files_only=local_files_only
-        ).to(device).eval()
+        self.model = (
+            CLIPModel.from_pretrained(model_name, local_files_only=local_files_only)
+            .to(device)
+            .eval()
+        )
         self.processor = AutoProcessor.from_pretrained(
             model_name, local_files_only=local_files_only
         )
@@ -47,7 +48,10 @@ class CLIPIQA(ImageMetric):
         inputs = self.processor(text=PROMPTS, return_tensors="pt", padding=True)
         inputs = {name: value.to(device) for name, value in inputs.items()}
         with torch.inference_mode():
-            anchors = self.model.get_text_features(**inputs).pooler_output
+            anchors = self.model.get_text_features(**inputs)
+            anchors = (
+                anchors if isinstance(anchors, torch.Tensor) else anchors.pooler_output
+            )
         self.register_buffer("anchors", F.normalize(anchors.float(), dim=-1))
 
     def forward(self, restored, reference=None):
@@ -58,7 +62,10 @@ class CLIPIQA(ImageMetric):
         )
         features = self.model.get_image_features(
             pixel_values=inputs.pixel_values.to(self.device)
-        ).pooler_output
+        )
+        features = (
+            features if isinstance(features, torch.Tensor) else features.pooler_output
+        )
         features = F.normalize(features.float(), dim=-1)
         logits = self.model.logit_scale.exp() * features @ self.anchors.T
         prompt_pairs = logits.reshape(logits.shape[0], -1, 2)

@@ -28,12 +28,10 @@ class PyiqaMetric(ImageMetric):
             import pyiqa
         except ImportError as error:
             raise ImportError(
-                f"{self.label} requires pyiqa; install requirements-eval.txt"
+                f"{self.label} requires pyiqa; install requirements.txt"
             ) from error
 
-        self.metric = pyiqa.create_metric(
-            model_name, device=device, **kwargs
-        ).eval()
+        self.metric = pyiqa.create_metric(model_name, device=device, **kwargs).eval()
 
     def forward(self, restored, reference=None):
         return self.metric(restored).mean()

@@ -1,0 +1,7 @@
+defaults:
+  - evaluation
+  - _self_
+
+eval:
+  mode: both
+  models: [jpeg, meanflow_1, meanflow_2, rf_euler_20, rf_euler_50, rf_heun_20, rf_heun_50, fbcnn, jdec, promptcir, diffbir, supir]

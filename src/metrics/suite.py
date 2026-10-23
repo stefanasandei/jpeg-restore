@@ -9,16 +9,13 @@ from .musiq import MUSIQ
 from .psnr import PSNR
 from .ssim import SSIM
 
-
 METRICS = {
-    metric.name: metric
-    for metric in (PSNR, SSIM, LPIPS, DISTS, MUSIQ, MANIQA, CLIPIQA)
+    metric.name: metric for metric in (PSNR, SSIM, LPIPS, DISTS, MUSIQ, MANIQA, CLIPIQA)
 }
 ALIASES = {"clipqa": "clipiqa"}
 
 
 class MetricSuite(nn.Module):
-
     def __init__(self, names, options, device):
         super().__init__()
         names = [ALIASES.get(name.lower(), name.lower()) for name in names]
@@ -32,10 +29,12 @@ class MetricSuite(nn.Module):
         if len(names) != len(set(names)):
             raise ValueError("evaluation metrics must be unique")
 
-        self.metrics = nn.ModuleDict({
-            name: METRICS[name](device=device, **options.get(name, {}))
-            for name in names
-        })
+        self.metrics = nn.ModuleDict(
+            {
+                name: METRICS[name](device=device, **options.get(name, {}))
+                for name in names
+            }
+        )
 
     @property
     def labels(self):
@@ -44,10 +43,13 @@ class MetricSuite(nn.Module):
     def forward(self, restored, reference):
         scores = {}
         for name, metric in self.metrics.items():
-            inputs = (
-                (restored, reference)
-                if metric.requires_reference
-                else (restored,)
-            )
+            inputs = (restored, reference) if metric.requires_reference else (restored,)
+            # TorchMetrics modules retain running state. Each row must describe
+            # this image alone, independent of all earlier datasets and QFs.
+            inner = getattr(metric, "metric", None)
+            if hasattr(inner, "reset"):
+                inner.reset()
             scores[name] = scalar(metric(*inputs))
+            if hasattr(inner, "reset"):
+                inner.reset()
         return scores
