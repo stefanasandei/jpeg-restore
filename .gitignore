@@ -10,3 +10,5 @@ poster
 .codex
 .agents
 .ruff_cache
+hf
+.vscode

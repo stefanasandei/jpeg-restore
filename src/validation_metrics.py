@@ -1,10 +1,8 @@
 import torch.nn.functional as F
-from torchmetrics.image import PeakSignalNoiseRatio
+from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
-from torchmetrics.image import StructuralSimilarityIndexMeasure
 
-
-QUALITY_BANDS = ((5, 9), (10, 29), (30, 49))
+QUALITY_BANDS = ((1, 4), (5, 9), (10, 29), (30, 50))
 
 
 class RestorationMetrics:

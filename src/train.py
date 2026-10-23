@@ -1,34 +1,59 @@
-from collections import defaultdict
 import multiprocessing as mp
+from collections import defaultdict
+from fnmatch import fnmatchcase
 from pathlib import Path
 
 import hydra
-from hydra.utils import instantiate
 import matplotlib.pyplot as plt
-from omegaconf import DictConfig, OmegaConf
-from tqdm import tqdm
-import wandb
-from wandb.sdk.lib import runid
-
 import torch
-import torch.optim as optim
+from hydra.utils import instantiate
+from omegaconf import DictConfig, OmegaConf
+from torch import optim
 from torch.utils.data import DataLoader, Subset
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+from tqdm import tqdm
+from wandb.sdk.lib import runid
 
+import utils
+import wandb
 from checkpoint import load_checkpoint, save_checkpoint
 from dataset import HRDataset, configure_data_worker
-import utils
 from validation_metrics import RestorationMetrics
-
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+def resolve_dataset_paths(dataset_cfg, names):
+    """Expand exact or glob-style dataset group names into image paths."""
+    paths = []
+    known_names = list(dataset_cfg.keys())
+    for pattern in names:
+        matched_names = [
+            name for name in known_names if fnmatchcase(name, pattern)
+        ]
+        if not matched_names:
+            raise KeyError(
+                f"dataset pattern {pattern!r} matched no configured groups"
+            )
+        for name in matched_names:
+            paths.extend(dataset_cfg[name])
+
+    # Avoid sampling a directory twice when exact and wildcard groups overlap.
+    return list(dict.fromkeys(paths))
+
+
 def train_step(
-    model, batch, optimizer, device, exploration=1, perceptual_loss=None
+    model,
+    batch,
+    device,
+    exploration=1,
+    perceptual_loss=None,
+    loss_divisor=1,
 ):
     if exploration < 1:
         raise ValueError("exploration must be positive")
+    if loss_divisor < 1:
+        raise ValueError("loss_divisor must be positive")
     compressed, clean, quality = (
         tensor.to(device, non_blocking=True) for tensor in batch
     )
@@ -76,11 +101,61 @@ def train_step(
     if not torch.isfinite(loss):
         raise FloatingPointError("non-finite training loss")
 
-    optimizer.zero_grad()
-    loss.backward()
+    (loss / loss_divisor).backward()
+    return losses
+
+
+def optimizer_step(model, optimizer):
+    """Clip gradients, rejecting an update if its norm is not finite."""
     grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-    optimizer.step()
-    return losses, grad_norm
+    updated = torch.isfinite(grad_norm).item()
+    if updated:
+        optimizer.step()
+    optimizer.zero_grad(set_to_none=True)
+    return grad_norm, updated
+
+
+def resolve_training_stages(train_cfg):
+    """Return validated progressive-resolution stages."""
+    configured = train_cfg.get("stages")
+    if not configured:
+        return [
+            {
+                "end_epoch": train_cfg.epochs,
+                "crop_size": train_cfg.get("crop_size", 128),
+                "batch_size": train_cfg.batch_size,
+                "gradient_accumulation_steps": train_cfg.get(
+                    "gradient_accumulation_steps", 1
+                ),
+            }
+        ]
+
+    stages = []
+    previous_end = 0
+    for stage in configured:
+        resolved = {
+            "end_epoch": stage.end_epoch,
+            "crop_size": stage.crop_size,
+            "batch_size": stage.batch_size,
+            "gradient_accumulation_steps": stage.get(
+                "gradient_accumulation_steps", 1
+            ),
+        }
+        if resolved["end_epoch"] <= previous_end:
+            raise ValueError("train.stages end epochs must be increasing")
+        for name in (
+            "crop_size",
+            "batch_size",
+            "gradient_accumulation_steps",
+        ):
+            if resolved[name] < 1:
+                raise ValueError(f"train.stages.{name} must be positive")
+        stages.append(resolved)
+        previous_end = resolved["end_epoch"]
+
+    if previous_end != train_cfg.epochs:
+        raise ValueError("the final training stage must end at train.epochs")
+    return stages
 
 
 def run_training(cfg: DictConfig, run: wandb.Run) -> None:
@@ -92,20 +167,20 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
     read_semaphore = loader_context.Semaphore(read_concurrency)
 
     # 1. data
-    dataset_paths = lambda names: [
-        path for name in names for path in cfg.dataset[name]
-    ]
     quality_range = tuple(train_cfg.get("quality_range", (10, 95)))
+    training_stages = resolve_training_stages(train_cfg)
 
     train_ds = HRDataset(
-        dataset_paths(train_cfg.datasets),
+        resolve_dataset_paths(cfg.dataset, train_cfg.datasets),
         train=True,
-        crop_size=train_cfg.get("crop_size", 128),
+        crop_size=training_stages[0]["crop_size"],
         quality_range=quality_range,
         read_semaphore=read_semaphore,
     )
     val_ds = HRDataset(
-        dataset_paths(train_cfg.get("val_datasets", cfg.eval.datasets)),
+        resolve_dataset_paths(
+            cfg.dataset, train_cfg.get("val_datasets", cfg.eval.datasets)
+        ),
         train=False,
         crop_size=train_cfg.get("val_crop_size", train_cfg.get("crop_size", 128)),
         quality_range=tuple(train_cfg.get("val_quality_range", quality_range)),
@@ -118,8 +193,7 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
         val_ds = Subset(
             val_ds, range(min(val_max_images, len(val_ds)))
         )
-    batches = len(train_ds) // train_cfg.batch_size
-    print(f"training images={len(train_ds)}, batches={batches}")
+    print(f"training images={len(train_ds)}")
 
     loader_kwargs = {
         "pin_memory": True,
@@ -127,19 +201,11 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
         "multiprocessing_context": loader_context,
         "worker_init_fn": configure_data_worker,
     }
-    train_loader = DataLoader(
-        train_ds,
-        batch_size=train_cfg.batch_size,
-        shuffle=True,
-        num_workers=8,
-        prefetch_factor=4,
-        in_order=False,
-        drop_last=True,
-        **loader_kwargs,
-    )
     val_loader = DataLoader(
         val_ds,
-        batch_size=train_cfg.batch_size,
+        batch_size=train_cfg.get(
+            "val_batch_size", training_stages[-1]["batch_size"]
+        ),
         shuffle=False,
         num_workers=2,
         **loader_kwargs,
@@ -183,41 +249,109 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
     # 4. training!
     torch.set_float32_matmul_precision("high")
     sample_every = train_cfg.get("sample_every", train_cfg.epochs)
+    checkpoint_every = train_cfg.get("checkpoint_every", sample_every)
+    if sample_every < 1 or checkpoint_every < 1:
+        raise ValueError("sample and checkpoint intervals must be positive")
     completed_epoch = start_epoch - 1
     last_saved_epoch = None
+    optimizer_steps = 0
+    active_stage = None
+    train_loader = None
 
     for epoch in range(start_epoch, train_cfg.epochs + 1):
+        stage = next(
+            stage for stage in training_stages if epoch <= stage["end_epoch"]
+        )
+        if stage is not active_stage:
+            # Recreating the loader gives persistent workers the new transform.
+            if train_loader is not None:
+                del train_loader
+            train_ds.set_crop_size(stage["crop_size"])
+            train_loader = DataLoader(
+                train_ds,
+                batch_size=stage["batch_size"],
+                shuffle=True,
+                num_workers=8,
+                prefetch_factor=4,
+                in_order=False,
+                drop_last=True,
+                **loader_kwargs,
+            )
+            active_stage = stage
+            print(
+                f"training stage through epoch {stage['end_epoch']}: "
+                f"crop={stage['crop_size']}, batch={stage['batch_size']}, "
+                "effective_batch_size="
+                f"{stage['batch_size'] * stage['gradient_accumulation_steps']}"
+            )
+        accumulation_steps = stage["gradient_accumulation_steps"]
+
         model.train()
         train_totals = defaultdict(float)
         completed_batches = 0
+        accumulated_batches = 0
+        optimizer.zero_grad(set_to_none=True)
 
         for batch in tqdm(train_loader):
             try:
-                losses, grad_norm = train_step(
+                losses = train_step(
                     model,
                     batch,
-                    optimizer,
                     device,
                     train_cfg.get("exploration", 1),
                     perceptual_loss,
+                    accumulation_steps,
                 )
             except FloatingPointError:
                 print("Unstable step detected. Skipping batch.")
                 torch.save(batch[0], "bad_batch.pt")
+                # Discard the whole incomplete accumulation window rather than
+                # mixing a partially scaled update into the next one.
+                optimizer.zero_grad(set_to_none=True)
+                accumulated_batches = 0
                 continue
 
             completed_batches += 1
+            accumulated_batches += 1
             for name, value in losses.items():
                 train_totals[name] += value.detach().item()
 
             metrics = {
                 "train_loss": losses["loss"].item(),
-                "grad_norm": grad_norm.item(),
                 "lr": optimizer.param_groups[0]["lr"],
             }
             for name, value in losses.items():
                 if name != "loss":
                     metrics[f"train_{name}"] = value.item()
+
+            if accumulated_batches == accumulation_steps:
+                grad_norm, updated = optimizer_step(model, optimizer)
+                accumulated_batches = 0
+                optimizer_steps += int(updated)
+                metrics["grad_norm"] = grad_norm.item()
+                metrics["optimizer_step"] = optimizer_steps
+                if not updated:
+                    print("Non-finite gradient detected. Skipping update.")
+                    metrics["skipped_update"] = 1
+            run.log(metrics)
+
+        if accumulated_batches:
+            # Each microbatch was divided by a full accumulation window. Undo
+            # that extra scaling for the shorter final window.
+            scale = accumulation_steps / accumulated_batches
+            for parameter in model.parameters():
+                if parameter.grad is not None:
+                    parameter.grad.mul_(scale)
+            grad_norm, updated = optimizer_step(model, optimizer)
+            optimizer_steps += int(updated)
+            metrics = {
+                "grad_norm": grad_norm.item(),
+                "lr": optimizer.param_groups[0]["lr"],
+                "optimizer_step": optimizer_steps,
+            }
+            if not updated:
+                print("Non-finite gradient detected. Skipping update.")
+                metrics["skipped_update"] = 1
             run.log(metrics)
 
         if not completed_batches:
@@ -271,7 +405,7 @@ def run_training(cfg: DictConfig, run: wandb.Run) -> None:
         scheduler.step()
         completed_epoch = epoch
 
-        if epoch % sample_every == 0 or epoch == 1:
+        if epoch % checkpoint_every == 0 or epoch == start_epoch:
             save_checkpoint(
                 checkpoint_path, cfg, epoch, model, optimizer, scheduler
             )

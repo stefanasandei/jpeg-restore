@@ -1,17 +1,17 @@
 import glob
+import math
 import os
 import random
 from io import BytesIO
 from pathlib import Path
 
 import cv2
-from PIL import Image
 import torch
+from PIL import Image
 from torch.utils.data import Dataset
-import torchvision.transforms.v2 as v2
+from torchvision.transforms import v2
 
 from utils import jpeg_compress
-
 
 IMAGE_EXTENSIONS = {".bmp", ".png", ".jpg", ".jpeg"}
 
@@ -44,6 +44,8 @@ def image_paths(paths):
 class JPEGCompression:
     def __init__(self, quality_range=(10, 95), random_quality=True):
         self.low, self.high = quality_range
+        if not 0 <= self.low <= self.high <= 100:
+            raise ValueError("JPEG quality range must satisfy 0 <= low <= high <= 100")
         self.random_quality = random_quality
 
     def __call__(self, image, index=None):
@@ -53,8 +55,12 @@ class JPEGCompression:
             if index is None:
                 raise ValueError("index is required for deterministic JPEG quality")
             count = self.high - self.low + 1
-            # 37 is coprime with the 86 qualities in [10, 95].
-            quality = self.low + (index * 37) % count
+            # Use a stride coprime with the configured range so validation
+            # covers every quality before repeating.
+            stride = 37
+            while math.gcd(stride, count) != 1:
+                stride += 2
+            quality = self.low + (index * stride) % count
         return jpeg_compress(image, quality), 1.0 - quality / 100.0
 
 
@@ -74,15 +80,8 @@ class HRDataset(Dataset):
         if not self.images:
             raise ValueError("no dataset images found")
         self.read_semaphore = read_semaphore
-
-        if train:
-            self.preprocess = v2.Compose([
-                v2.RandomCrop(crop_size),
-                v2.RandomVerticalFlip(),
-                v2.RandomHorizontalFlip(),
-            ])
-        else:
-            self.preprocess = v2.CenterCrop(crop_size)
+        self.train = train
+        self.set_crop_size(crop_size)
 
         # Validation covers the same range with reproducible quality factors.
         self.compress = JPEGCompression(quality_range, random_quality=train)
@@ -90,6 +89,19 @@ class HRDataset(Dataset):
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
         ])
+
+    def set_crop_size(self, crop_size):
+        """Update the crop used by workers created after this call."""
+        if crop_size < 1:
+            raise ValueError("crop_size must be positive")
+        if self.train:
+            self.preprocess = v2.Compose([
+                v2.RandomCrop(crop_size),
+                v2.RandomVerticalFlip(),
+                v2.RandomHorizontalFlip(),
+            ])
+        else:
+            self.preprocess = v2.CenterCrop(crop_size)
 
     def __getitem__(self, idx):
         if self.read_semaphore is None:

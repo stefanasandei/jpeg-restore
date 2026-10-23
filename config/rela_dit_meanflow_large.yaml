@@ -1,0 +1,61 @@
+defaults:
+  - rela_dit_meanflow
+  - _self_
+
+# Full-data MeanFlow pretraining from random initialization. Every dataset group
+# named lsdir_* in rf_pretrain.yaml is included automatically.
+train:
+  datasets: [df2k_train, "lsdir_*"]
+  start_checkpoint: ""
+  checkpoint_name: rela_dit_meanflow_large.pt
+
+  # Keep each optimizer update at 32 images while progressively increasing the
+  # spatial context. The 75/15/10 split spends most compute learning the broad
+  # distribution, then adapts the same model to deployment-sized context.
+  epochs: 100
+  stages:
+    - end_epoch: 75
+      crop_size: 128
+      batch_size: 32
+      gradient_accumulation_steps: 1
+    - end_epoch: 90
+      crop_size: 256
+      batch_size: 8
+      gradient_accumulation_steps: 4
+    - end_epoch: 100
+      crop_size: 368
+      batch_size: 4
+      gradient_accumulation_steps: 8
+
+  # One distribution across all stages avoids coupling compression difficulty
+  # to resolution. QF 1 covers extreme JPEG damage; QF 50 still teaches clean
+  # detail preservation without spending much capacity on near-identity QFs.
+  quality_range: [1, 50]
+  val_quality_range: [1, 50]
+  val_crop_size: 256
+  val_batch_size: 4
+  val_datasets: [df2k_val]
+  val_seed: 0
+
+  lr: 1e-4
+  exploration: 2
+  sample_every: 5
+  checkpoint_every: 1
+  compile:
+    # The segmented JVP path is not compatible with torch.compile yet.
+    enabled: false
+
+model:
+  lpips_weight: 0.4
+  lpips_backbone: alex
+
+lr_scheduler:
+  _target_: schedulers.warmup_cosine
+  total_epochs: ${train.epochs}
+  warmup_epochs: 5
+  min_lr_ratio: 0.05
+
+eval:
+  datasets: [live1]
+  checkpoint: rela_dit_meanflow_large.pt
+  seed: 0
