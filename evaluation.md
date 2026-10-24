@@ -171,3 +171,5 @@ python src/audit_jvp.py \
 The loss contains adaptive MeanFlow and severity regression; LPIPS is excluded. This verifies the recorded finite cases, not every input, precision, or hardware configuration. Each method/seed uses a fresh process. CUDA memory instrumentation includes resident model/inputs and forward/backward gradients, excludes optimizer state/steps, and reports null on CPU. Diagnostic single-pass timings are not throughput benchmarks.
 
 The archived audit was CPU-only. The historical 15.75→6.16 GiB memory and associated speed comparison are withdrawn because their accounting boundaries were not retained. CPU gradient agreement does not validate those GPU memory values.
+
+Recorded project commit IDs are mapped to the cleaned public history in [`history-rewrite-map.tsv`](artifacts/matched-24-oct/history-rewrite-map.tsv). Original measurement records remain unchanged. Upstream baseline commit IDs are independent and unchanged.

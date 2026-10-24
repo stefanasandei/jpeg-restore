@@ -36,3 +36,5 @@ Public records use portable path placeholders and retain only evaluation depende
 The complete comparison has 4,122 cases, 54 quality summaries and 12 timing configurations. Reproduce it with the reader-facing commands in [evaluation.md](../../evaluation.md); validate the reports with `python scripts/validate_matched_run.py artifacts/matched-24-oct/run`. Every dataset compares FBCNN, JDEC, PromptCIR, both MeanFlow schedules and the JPEG reference.
 
 `jvp_public_cpu.json` records the current public-checkpoint CPU audit, including scalar losses, tangent/gradient norms, nonzero gradient counts and exact observed differences. The local paper reports these substantive values instead of an error-only table.
+
+Project Git revisions in the immutable measurement records retain their original values. [history-rewrite-map.tsv](history-rewrite-map.tsv) maps those IDs to the equivalent commits after removal of private publication/development scripts from history. Baseline upstream revisions are unchanged. Checkpoint, input, source-file and numerical-result hashes retain their recorded values.
