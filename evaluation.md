@@ -4,9 +4,19 @@ Paper PDFs, manuscript sources, tests, experiment logs, and hidden directories a
 
 The revised comparison uses one evaluation harness and trained checkpoints for **FBCNN, JDEC, PromptCIR, and MeanFlow (one or two updates)**, plus the JPEG input. The governing preset is [`config/evaluation_matched.yaml`](config/evaluation_matched.yaml). Quality and latency use the same checkpoints, precision policy, tile grid, and reconstruction procedure. Published scores, architecture proxies, and historical ensemble timings are excluded from this comparison.
 
-The final full results will be exported to `artifacts/matched-24-oct/run` only after complete validation. Existing local partial records remain under ignored `outputs/` and are reused only after source, checkpoint, metric/native asset, environment, image/JPEG, and seed checks. Historical transcriptions under `artifacts/roedunet-24-oct` do not fill any final comparison cell.
+The full results are complete and validated in [`artifacts/matched-24-oct/run`](artifacts/matched-24-oct/run): **4,122 image cases, 54 quality summaries, and 12 timing configurations**. Existing local partial records remain under ignored `outputs/` and are reused only after source, checkpoint, metric/native asset, environment, image/JPEG, and seed checks. Historical transcriptions under `artifacts/roedunet-24-oct` do not fill any final comparison cell.
 
-## Finish the complete paper
+## Rebuild the paper without GPU work
+
+The completed measurements can be used directly:
+
+```bash
+python scripts/finalize_manuscript.py
+```
+
+The build uses a relative BibTeX output path compatible with TeX's `openout_any=p` policy. The efficiency-table verification checks its five displayed restoration systems; the JPEG identity reference remains in the raw reports and quality table.
+
+## Complete or resume evaluation and build the paper
 
 Run outside the sandbox on the same RTX 3090 workstation:
 
@@ -15,7 +25,7 @@ cd /path/to/jpeg-restore
 bash scripts/finish_paper.sh
 ```
 
-The checked cache currently contains **1,887 of 4,122 image cases** and **eight of 12 timing configurations**. The command measures the remaining cases using the existing evaluator, recomputes all aggregates from individual images, validates the full 29/100/100 image cohorts for every method/QF, renders the original three-dataset comparison structure, and builds `roedunet-24-oct.pdf` locally. It produces no JPEG-only comparison table and never substitutes published or historical summaries.
+All image cases and timing configurations are now complete. The command reuses compatible completed cases or measures missing cases using the existing evaluator, recomputes all aggregates from individual images, validates the full 29/100/100 image cohorts for every method/QF, renders the original three-dataset comparison structure, and builds `roedunet-24-oct.pdf` locally. It produces no JPEG-only comparison table and never substitutes published or historical summaries.
 
 The final source template is local-only at `manuscript/full-template.tex`; the authoritative build directory is `../roedunet`. The pipeline checks the IEEE page limit, references, page-one links, and the presence of every reported quality value before replacing the PDF. All paper files remain excluded from Git. The superseded narrowed PDF is retained locally as `roedunet-24-oct-superseded.pdf`.
 

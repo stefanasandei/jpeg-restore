@@ -4,7 +4,7 @@ This directory archives a fresh comparison of trained FBCNN, JDEC, PromptCIR, an
 
 The complete run contains six configurations × 229 images × three QFs = 4,122 per-image cases. System timings cover both 512² and 1024² at batch one, with five warm-ups and 20 measured calls. All methods share input bytes, spatial tiling/blending, FP32/TF32 policy, metrics, and a cached-JPEG-file-to-restored-RGB timing boundary.
 
-While the GPU sweep is active, the run files are provisional progress records. A successful `run/validation.json` is required before publication. The validator checks complete image cohorts, identical image/JPEG hashes and seeds, actual tile-level NFE, model/precision settings, finite metrics, raw timing samples, and summaries recomputed from per-image records.
+The full run has passed [`run/validation.json`](run/validation.json). All 4,122 image cases, 54 quality summaries and 12 timing configurations are complete. The public manifest includes the normalized settings of all 31 contributing source runs. The validator checks complete image cohorts, identical image/JPEG hashes and seeds, actual tile-level NFE, model/precision settings, finite metrics, raw timing samples, and summaries recomputed from per-image records.
 
 | Evidence | Purpose |
 | --- | --- |

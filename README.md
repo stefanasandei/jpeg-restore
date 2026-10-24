@@ -57,15 +57,11 @@ See [evaluation.md](./evaluation.md) for the matched quality/performance protoco
 ## 📊 Benchmark Results
 
 <!-- MATCHED_RESULTS_START -->
-The full results table compares **FBCNN, JDEC, PromptCIR, and both MeanFlow schedules** on **LIVE-1, Urban100, and DIV2K validation at QF5/10/20**, with JPEG as a reference row. Every dataset contains the same compared methods; there is no separate model-versus-JPEG-only results table.
+The full comparison validates **4,122 image cases**, **54 quality summaries**, and **12 timing configurations** across LIVE-1, Urban100 and DIV2K validation at QF5/10/20. FBCNN, JDEC, PromptCIR and both MeanFlow schedules use the same JPEG inputs, trained checkpoints, FP32/TF32 policy, tile clipping/blending, metric implementations and timing boundary.
 
-Complete the remaining measurements and build the final local IEEE PDF with:
+At LIVE-1 QF10, two-update MeanFlow obtains LPIPS **0.1622** versus **0.2301** for PromptCIR, the lowest baseline at this setting. Matched 1024² throughput is **1.202 images/s**. These are measured operating points, not overall restoration superiority.
 
-```bash
-bash scripts/finish_paper.sh
-```
-
-The build uses the local, ignored IEEE draft supplied in this workspace. The pipeline resumes verified cases, computes missing cases, validates all 4,122 image results and 12 timing configurations, exports portable evidence, and builds the complete paper. It refuses incomplete tables. Full measured numerical claims are written here only after successful validation. Use `PAPER_DRY_RUN=1 bash scripts/finish_paper.sh` to check the remaining work without using the GPU.
+See [complete validated records](artifacts/matched-24-oct/run) and [reproduction protocol](evaluation.md). Paper PDFs and manuscript sources remain local.
 <!-- MATCHED_RESULTS_END -->
 
 The independent [JVP audit](src/audit_jvp.py) and [CPU records](artifacts/roedunet-24-oct/jvp_trained_cpu.json) compare outputs, tangents, losses, and parameter gradients on the trained checkpoint. These bounded CPU checks do not establish historical GPU memory reductions.

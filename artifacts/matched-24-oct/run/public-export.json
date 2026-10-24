@@ -1,0 +1,20 @@
+{
+  "exported_utc": "2026-10-24T18:26:03.255002+00:00",
+  "changes": [
+    "Personal/workspace/dataset path prefixes normalized to portable placeholders",
+    "Installed-package inventory restricted to evaluation dependencies",
+    "Original source-run settings included when assembling a resumed full comparison"
+  ],
+  "numeric_results_hashes_seeds_and_source_identities_preserved": true,
+  "original_local_file_sha256": {
+    "manifest.json": "a2cfc472be6f0883e34ae0f188f7769ffc9d1257a474bdabc99f8825402e8d94",
+    "results.json": "0b4224b63f94ff69daa6d806e16957a77537db4324db2fac7b4972e8fc125c5f",
+    "per_image.jsonl": "f6f787f657ae4efbecda661acf49b335cda42174612ef225a322a5ee783b3fb0",
+    "progress.jsonl": "f6f787f657ae4efbecda661acf49b335cda42174612ef225a322a5ee783b3fb0",
+    "quality.csv": "fd424a350fc07e529daebd69e10bd87b0c509a164a05437e3ed2f7a1594ff691",
+    "performance.csv": "2b9126217ec72a02d1305abf712b5b27245c9a1f973ba6592bc39050e9ef6477",
+    "per_image.csv": "db08b1b9913326ea34dc7d1518f4c9897d41a348ec966f9475f0c4c8d1de040c",
+    "errors.csv": "db7bac9de0d77628b8e11ff557a5c6ed611bf0cf0f7889044b5a0c0b74bbdca8"
+  },
+  "public_copy_validated": true
+}
