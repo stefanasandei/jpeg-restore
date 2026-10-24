@@ -27,6 +27,27 @@ def git_revision(directory):
         return None
 
 
+def project_worktree_state():
+    try:
+        status = subprocess.check_output(["git", "-C", str(ROOT), "status", "--porcelain"], stderr=subprocess.DEVNULL)
+        patch = subprocess.check_output(["git", "-C", str(ROOT), "diff", "HEAD", "--", "src", "config", "scripts", "requirements.txt"], stderr=subprocess.DEVNULL)
+        return {"dirty": bool(status), "tracked_runtime_diff_sha256": sha256(patch).hexdigest()}
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def installed_package_versions():
+    # Isolated workers prepend pinned dependencies to sys.path. Preserve the
+    # first distribution, matching Python/importlib resolution, rather than
+    # letting a second globally installed version overwrite it in the inventory.
+    packages = {}
+    for distribution in importlib.metadata.distributions():
+        name = distribution.metadata.get("Name") if distribution.metadata else None
+        if name:
+            packages.setdefault(name, distribution.version)
+    return dict(sorted(packages.items()))
+
+
 def environment_metadata(device):
     versions = {}
     for name in (
@@ -35,6 +56,11 @@ def environment_metadata(device):
         "torchmetrics",
         "pyiqa",
         "transformers",
+        "diffusers",
+        "peft",
+        "huggingface-hub",
+        "accelerate",
+        "tokenizers",
         "numpy",
         "opencv-python",
     ):
@@ -63,12 +89,9 @@ def environment_metadata(device):
         "tf32_cudnn": torch.backends.cudnn.allow_tf32,
         "torch_cpu_threads": torch.get_num_threads(),
         "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
-        "all_package_versions": dict(sorted(
-            (distribution.metadata["Name"], distribution.version)
-            for distribution in importlib.metadata.distributions()
-            if distribution.metadata and distribution.metadata.get("Name")
-        )),
+        "all_package_versions": installed_package_versions(),
         "git_revision": git_revision(ROOT),
+        "project_worktree_state": project_worktree_state(),
     }
 
 
@@ -84,6 +107,24 @@ def file_identity(path, hash_weights):
                 digest.update(chunk)
         identity["sha256"] = digest.hexdigest()
     return identity
+
+
+def model_files(spec, hash_weights):
+    files = {key: file_identity(spec[key], hash_weights)
+             for key in ("checkpoint", "config", "cave_checkpoint") if spec.get(key)}
+    if spec.get("pretrained_model"):
+        base = Path(spec["pretrained_model"])
+        for relative in ("unet/config.json", "unet/diffusion_pytorch_model.safetensors",
+                         "vae/config.json", "vae/diffusion_pytorch_model.safetensors",
+                         "scheduler/scheduler_config.json"):
+            files["pretrained_model/" + relative] = file_identity(base / relative, hash_weights)
+    return files
+
+
+def upstream_diff_sha256(spec):
+    if not spec.get("repo"):
+        return None
+    return sha256(subprocess.check_output(["git", "-C", spec["repo"], "diff", "HEAD", "--"])).hexdigest()
 
 
 def make_manifest(cfg, device, specs, datasets):
@@ -106,11 +147,8 @@ def make_manifest(cfg, device, specs, datasets):
                 "repo_revision": git_revision(spec["repo"])
                 if spec.get("repo")
                 else None,
-                "files": {
-                    key: file_identity(spec[key], cfg.eval.get("hash_weights", True))
-                    for key in ("checkpoint", "config")
-                    if spec.get(key)
-                },
+                "upstream_diff_sha256": upstream_diff_sha256(spec),
+                "files": model_files(spec, cfg.eval.get("hash_weights", True)),
             }
             for name, spec in specs.items()
         },

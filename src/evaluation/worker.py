@@ -39,6 +39,8 @@ def main():
 
     try:
         config = json.loads(Path(sys.argv[1]).read_text())
+        if config["spec"].get("dependency_path"):
+            sys.path.insert(0, config["spec"]["dependency_path"])
         torch.set_num_threads(config.get("cpu_threads", torch.get_num_threads()))
         torch.backends.cuda.matmul.allow_tf32 = config.get("tf32_matmul", False)
         torch.backends.cudnn.allow_tf32 = config.get("tf32_cudnn", False)

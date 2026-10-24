@@ -220,7 +220,7 @@ def build_adapter(spec, device, dtype):
         return JPEGAdapter(spec, device, dtype)
     if kind == "native":
         return NativeAdapter(spec, device, dtype)
-    if kind in ("fbcnn", "jdec", "promptcir", "diffbir", "supir"):
+    if kind in ("fbcnn", "jdec", "promptcir", "diffbir", "supir", "codiff"):
         from .process import ProcessAdapter
 
         return ProcessAdapter(spec, device, dtype)

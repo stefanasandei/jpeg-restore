@@ -2,8 +2,10 @@ defaults:
   - evaluation
   - _self_
 
-# One full-image, trained-checkpoint protocol for quality AND system timing.
+# Shared inputs/metrics and trained checkpoints for quality AND system timing.
+# MeanFlow runs whole images; the regression baselines retain fixed tiling.
 # Replace paths for another machine; archived image/bitstream hashes identify inputs.
+evaluation_assets: ${oc.env:JPEG_EVAL_ASSET_ROOT,/mnt/projects/jpeg-restoration/models/matched}
 dataset:
   div2k_val: [/mnt/projects/models/01-datasets/DF2K/DF2K_valid_HR]
 
@@ -22,35 +24,35 @@ eval:
   input_pad_multiple: 32
   metric_options:
     clipiqa:
-      model_name: checkpoints/matched/clip-vit-base-patch16
+      model_name: ${evaluation_assets}/clip-vit-base-patch16
       local_files_only: true
   checkpoints:
-    meanflow: checkpoints/matched/meanflow/meanflow_jpeg_qf5_20.pth
+    meanflow: ${evaluation_assets}/meanflow/meanflow_jpeg_qf5_20.pth
   model_specs:
     jpeg:
       benchmark_input: cached_jpeg_file
       common_tiling: {tile: 224, overlap: 32, clip: true}
     meanflow_1:
       benchmark_input: cached_jpeg_file
-      common_tiling: {tile: 224, overlap: 32, clip: true}
+      common_tiling: null
     meanflow_2:
       benchmark_input: cached_jpeg_file
-      common_tiling: {tile: 224, overlap: 32, clip: true}
+      common_tiling: null
     fbcnn:
       benchmark_input: cached_jpeg_file
       common_tiling: {tile: 224, overlap: 32, clip: true}
       repo: external/FBCNN
-      checkpoint: checkpoints/matched/fbcnn_color.pth
+      checkpoint: ${evaluation_assets}/fbcnn_color.pth
     promptcir:
       benchmark_input: cached_jpeg_file
       common_tiling: {tile: 224, overlap: 32, clip: true}
       repo: external/PromptCIR-NTIRE24
-      checkpoint: checkpoints/matched/promptcir/checkpoint/model_best.pth
+      checkpoint: ${evaluation_assets}/promptcir/checkpoint/model_best.pth
     jdec:
       benchmark_input: cached_jpeg_file
       common_tiling: {tile: 224, overlap: 32, clip: true}
       repo: external/JDEC
-      checkpoint: checkpoints/matched/jdec.pth
+      checkpoint: ${evaluation_assets}/jdec.pth
   performance:
     sizes: [[512, 512], [1024, 1024]]
     batch_sizes: [1]

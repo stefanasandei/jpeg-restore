@@ -1,0 +1,45 @@
+[
+  {
+    "file": "models/codiff/codiff.pkl",
+    "sha256": "24607778dce971037cd4a013bbcba8475b02a29d5204a210a27e4996af19692b",
+    "started_utc": "2026-10-24T19:33:38.698559+00:00",
+    "completed_utc": "2026-10-24T19:34:17.485232+00:00",
+    "source": "https://drive.google.com/file/d/1SHZQs8fu3K419jlENoY8qdTKbjAOL0i7/view"
+  },
+  {
+    "file": "models/codiff/cave.pth",
+    "sha256": "d49ef67568ffc9c22123eea934d37f1ceccb460f276455ec379bb6942408840b",
+    "started_utc": "2026-10-24T19:33:38.698780+00:00",
+    "completed_utc": "2026-10-24T19:34:25.990888+00:00",
+    "source": "https://drive.google.com/file/d/1SZo5UMSMEcYy4Wr-OIQgTk8hUXiFMIbK/view"
+  },
+  {
+    "source": "Manojb/stable-diffusion-2-1-base",
+    "revision": "0094d483a120f3f33dafbd187ea4aa60d10de75c",
+    "note": "Original stabilityai repository unavailable; public mirror of SD2.1-base. Only UNet/VAE/scheduler required by official CODiff.",
+    "started_utc": "2026-10-24T19:33:38.699175+00:00",
+    "completed_utc": "2026-10-24T19:34:17.586126+00:00",
+    "files": [
+      {
+        "file": "models/codiff/sd21/scheduler/scheduler_config.json",
+        "sha256": "11ac5627d7df0fa344b875c4b5722b1767a8a2aa1684c2cf8b4d614300127234"
+      },
+      {
+        "file": "models/codiff/sd21/unet/config.json",
+        "sha256": "ce0c6d379e3b1d3e1f79338de70c80a1e36f17a6372439a8249b6fb0dfa1b608"
+      },
+      {
+        "file": "models/codiff/sd21/unet/diffusion_pytorch_model.safetensors",
+        "sha256": "6dfae3e5f7d459b50f4b0850ead945972c75bb0e1897628933e169eb43974214"
+      },
+      {
+        "file": "models/codiff/sd21/vae/config.json",
+        "sha256": "424117cb534ce03497c41305ed868980123917b2b6abba4bbaa615e968772903"
+      },
+      {
+        "file": "models/codiff/sd21/vae/diffusion_pytorch_model.safetensors",
+        "sha256": "a1d993488569e928462932c8c38a0760b874d166399b14414135bd9c42df5815"
+      }
+    ]
+  }
+]

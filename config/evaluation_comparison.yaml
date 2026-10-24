@@ -1,0 +1,8 @@
+defaults:
+  - evaluation_codiff
+  - _self_
+
+# Complete comparison: whole-image MeanFlow, native CODiff, fixed legacy baselines.
+eval:
+  models: [jpeg, fbcnn, jdec, promptcir, codiff, meanflow_1, meanflow_2]
+  output_dir: /mnt/projects/jpeg-restoration/outputs/comparison-reproduction

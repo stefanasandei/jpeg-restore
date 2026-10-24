@@ -1,0 +1,13 @@
+diff --git a/diffusion/codiff.py b/diffusion/codiff.py
+index fda557a..f0b948e 100644
+--- a/diffusion/codiff.py
++++ b/diffusion/codiff.py
+@@ -218,7 +218,7 @@ class CODiff_test(torch.nn.Module):
+     @torch.no_grad()
+     def forward(self, lq, visual_embedding):
+         lq_latent = self.vae.encode(lq.to(self.weight_dtype)).latent_dist.sample() * self.vae.config.scaling_factor
+-        visual_embedding = self.proj(visual_embedding).to(torch.float16)
++        visual_embedding = self.proj(visual_embedding).to(self.weight_dtype)
+ 
+         ## add tile function
+         _, _, h, w = lq_latent.size()

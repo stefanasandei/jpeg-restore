@@ -1,0 +1,20 @@
+defaults:
+  - evaluation_matched
+  - _self_
+
+# Downloaded assets and isolated dependencies live on the large data volume.
+eval:
+  models: [codiff]
+  output_dir: /mnt/projects/jpeg-restoration/outputs/codiff
+  continue_on_error: false
+  model_specs:
+    codiff:
+      kind: codiff
+      repo: /mnt/projects/jpeg-restoration/vendor/CODiff
+      dependency_path: /mnt/projects/jpeg-restoration/vendor/codiff-deps
+      pretrained_model: /mnt/projects/jpeg-restoration/models/codiff/sd21
+      checkpoint: /mnt/projects/jpeg-restoration/models/codiff/codiff.pkl
+      cave_checkpoint: /mnt/projects/jpeg-restoration/models/codiff/cave.pth
+      benchmark_input: cached_jpeg_file
+      common_tiling: null
+      timeout: 1800

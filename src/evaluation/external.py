@@ -18,6 +18,7 @@ SOURCES = {
     "promptcir": "https://github.com/lbc12345/PromptCIR-NTIRE24",
     "diffbir": "https://github.com/XPixelGroup/DiffBIR",
     "supir": "https://github.com/Fanghua-Yu/SUPIR",
+    "codiff": "https://github.com/jp-guo/CODiff",
 }
 
 
@@ -293,6 +294,55 @@ class DiffBIRAdapter(Adapter):
         )
 
 
+class CODiffAdapter(Adapter):
+    """Released CaVE + CODiff LoRA, official native VAE/latent tiling and AdaIN."""
+
+    def __init__(self, spec, device, dtype):
+        super().__init__(spec, device, dtype)
+        import types
+        from types import SimpleNamespace
+        repo = Path(spec["repo"])
+        # Upstream uses top-level namespace imports inside diffusion/.
+        for directory in (repo / "diffusion", repo / "diffusion/my_utils"):
+            sys.path.insert(0, str(directory))
+        package = types.ModuleType("models")
+        package.__path__ = [str(repo / "diffusion/models")]
+        sys.modules["models"] = package
+        from diffusion.codiff import CODiff_test
+        from cave.cave import CaVE
+        args = SimpleNamespace(
+            pretrained_model=spec["pretrained_model"],
+            codiff_path=checkpoint_path(spec), mixed_precision="fp32",
+            merge_and_unload_lora=False, vae_encoder_tiled_size=1024,
+            vae_decoder_tiled_size=224, latent_tiled_size=96,
+            latent_tiled_overlap=32,
+        )
+        self.restorer = CODiff_test(args).eval()
+        self.cave = CaVE(in_nc=3, out_nc=3, nc=[64,128,256,512], nb=4, act_mode="BR")
+        self.cave.load_state_dict(torch.load(checkpoint_path(spec, "cave_checkpoint"), map_location="cpu", weights_only=True), strict=True)
+        self.cave = self.cave.eval().to(self.device)
+        self.model = torch.nn.ModuleList([self.restorer, self.cave])
+        self.calls = 0
+        self.restorer.unet.register_forward_pre_hook(self._count)
+        self.nfe = 1
+
+    def _count(self, *_):
+        self.calls += 1
+
+    def restore(self, prepared, seed):
+        from torchvision.transforms.functional import to_pil_image, to_tensor
+        from my_utils.wavelet_color_fix import adain_color_fix
+        seed_everything(seed)
+        self.calls = 0
+        embedding = self.cave.get_visual_embedding(prepared)
+        output = self.restorer(prepared * 2 - 1, embedding)
+        self.nfe = self.calls
+        # Preserve the release's PIL/AdaIN postprocessing, including quantization.
+        target = to_pil_image((output[0].float().cpu() * .5 + .5).clamp(0, 1))
+        source = to_pil_image(prepared[0].float().cpu().mul(255).round().byte())
+        return to_tensor(adain_color_fix(target=target, source=source)).unsqueeze(0).to(self.device)
+
+
 def create_external(spec, device, dtype):
     classes = {
         "fbcnn": FBCNNAdapter,
@@ -300,5 +350,6 @@ def create_external(spec, device, dtype):
         "promptcir": PromptCIRAdapter,
         "diffbir": DiffBIRAdapter,
         "supir": SUPIRAdapter,
+        "codiff": CODiffAdapter,
     }
     return classes[spec["kind"]](spec, device, dtype)

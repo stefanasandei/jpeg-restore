@@ -78,8 +78,83 @@ def prepare_metrics(base):
     (base / "preparation.json").write_text(json.dumps(acquisition, indent=2) + "\n")
 
 
+def prepare_codiff(storage):
+    """Prepare the trained diffusion baseline without using the root disk."""
+    from datetime import datetime, timezone
+    import gdown
+    storage = Path(storage).resolve()
+    for name in ("models/codiff", "vendor", "cache/hf", "cache/pip", "tmp"):
+        (storage / name).mkdir(parents=True, exist_ok=True)
+    os.environ.update(HF_HOME=str(storage / "cache/hf"),
+                      HF_HUB_CACHE=str(storage / "cache/hf/hub"),
+                      PIP_CACHE_DIR=str(storage / "cache/pip"),
+                      TMPDIR=str(storage / "tmp"))
+    repo = storage / "vendor/CODiff"
+    revision = "86e2f0499456298613472fa164417d1cce0a0cb7"
+    if not repo.exists():
+        run("git", "clone", "https://github.com/jp-guo/CODiff.git", str(repo))
+    current = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
+    if current != revision:
+        if subprocess.check_output(["git", "-C", str(repo), "status", "--porcelain"], text=True).strip():
+            raise RuntimeError("refusing to replace a modified CODiff checkout")
+        run("git", "-C", str(repo), "checkout", revision)
+    patch = ROOT / "artifacts/full-image-codiff/codiff-fp32.patch"
+    applied = subprocess.run(["git", "-C", str(repo), "apply", "--reverse", "--check", str(patch)], capture_output=True).returncode == 0
+    if not applied:
+        run("git", "-C", str(repo), "apply", str(patch))
+    base = storage / "models/codiff"
+    records = []
+    for filename, identifier in [("codiff.pkl", "1SHZQs8fu3K419jlENoY8qdTKbjAOL0i7"),
+                                  ("cave.pth", "1SZo5UMSMEcYy4Wr-OIQgTk8hUXiFMIbK")]:
+        target = base / filename
+        started = datetime.now(timezone.utc).isoformat()
+        operation = "already_present" if target.exists() else "downloaded"
+        if not target.exists():
+            gdown.download(id=identifier, output=str(target), quiet=False)
+        records.append(dict(file=str(target), operation=operation, started_utc=started,
+                            completed_utc=datetime.now(timezone.utc).isoformat()))
+    run("hf", "download", "Manojb/stable-diffusion-2-1-base",
+        "unet/config.json", "unet/diffusion_pytorch_model.safetensors",
+        "vae/config.json", "vae/diffusion_pytorch_model.safetensors", "scheduler/scheduler_config.json",
+        "--revision", "0094d483a120f3f33dafbd187ea4aa60d10de75c", "--local-dir", str(base / "sd21"))
+    assets = json.loads((ROOT / "artifacts/full-image-codiff/codiff-assets.json").read_text())
+    for asset in [assets[0], assets[1], *assets[2]["files"]]:
+        target = storage / asset["file"]
+        digest = hashlib.sha256()
+        with target.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(8 << 20), b""):
+                digest.update(chunk)
+        if digest.hexdigest() != asset["sha256"]:
+            raise RuntimeError(f"CODiff asset hash differs: {target}")
+    from importlib.metadata import distributions
+    dependencies = storage / "vendor/codiff-deps"
+    pinned = {"diffusers": "0.25.0", "peft": "0.9.0", "huggingface-hub": "0.25.0",
+              "transformers": "4.48.3", "tokenizers": "0.21.4"}
+    installed = {d.metadata["Name"].lower().replace("_", "-"): d.version
+                 for d in distributions(path=[str(dependencies)])}
+    if any(installed.get(name) != version for name, version in pinned.items()):
+        run(sys.executable, "-m", "pip", "install", "--target", str(dependencies), "--upgrade",
+            "--no-deps", "--only-binary=:all:", *(f"{name}=={version}" for name, version in pinned.items()))
+    (base / "preparation.json").write_text(json.dumps(records, indent=2) + "\n")
+    print("Trained CODiff/CaVE, SD2.1 components, and isolated dependencies are ready:", storage)
+
+
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--codiff-only", action="store_true")
+    parser.add_argument("--storage-root", default="/mnt/projects/jpeg-restoration")
+    args = parser.parse_args()
+    if args.codiff_only:
+        prepare_codiff(args.storage_root)
+        return
     os.chdir(ROOT)
+    storage = Path(args.storage_root).resolve()
+    for directory in ("models/matched", "cache/hf", "cache/pip", "tmp"):
+        (storage / directory).mkdir(parents=True, exist_ok=True)
+    os.environ.update(HF_HOME=str(storage / "cache/hf"),
+                      HF_HUB_CACHE=str(storage / "cache/hf/hub"),
+                      PIP_CACHE_DIR=str(storage / "cache/pip"), TMPDIR=str(storage / "tmp"))
     for name, (url, revision) in REPOS.items():
         target = Path("external") / name
         if not (target / ".git").exists():
@@ -93,7 +168,7 @@ def main():
         if current != revision:
             run("git", "-C", str(target), "fetch", "--depth", "1", "origin", revision)
             run("git", "-C", str(target), "checkout", "--detach", "FETCH_HEAD")
-    base = Path("checkpoints/matched")
+    base = storage / "models/matched"
     base.mkdir(parents=True, exist_ok=True)
     fbcnn = base / "fbcnn_color.pth"
     if not fbcnn.exists():
@@ -121,8 +196,9 @@ def main():
     archived = ROOT / "artifacts/matched-24-oct/assets.json"
     if archived.exists():
         for item in json.loads(archived.read_text())["assets"]:
-            path = Path(item["file"])
-            if str(path).startswith("checkpoints/") and path.is_file() and path.suffix != ".so":
+            relative = Path(item["file"])
+            path = base / relative.relative_to("checkpoints/matched") if str(relative).startswith("checkpoints/matched/") else relative
+            if str(relative).startswith("checkpoints/") and path.is_file() and path.suffix != ".so":
                 digest = hashlib.sha256(path.read_bytes()).hexdigest()
                 if digest != item["sha256"]:
                     raise RuntimeError(f"downloaded asset differs from published bytes: {path}")

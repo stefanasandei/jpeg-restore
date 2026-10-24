@@ -17,6 +17,7 @@ LABELS = {
     "promptcir": "PromptCIR",
     "diffbir": "DiffBIR",
     "supir": "SUPIR",
+    "codiff": "CODiff",
     "restormer_backbone": "Restormer",
     "sana_backbone": "SANA Linear DiT",
     "rela_backbone": "RELA DiT",

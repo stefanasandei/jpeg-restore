@@ -1,0 +1,31 @@
+{
+  "revision": "86e2f0499456298613472fa164417d1cce0a0cb7",
+  "patch_sha256": "62be3273531ab5b7b04855b48a292cca59ce45794b601f5c6a488829adbb89d8",
+  "files": {
+    "cave/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cave/cave.py": "85ae0d5318bbcc4721936d2ab614bcf7617b2292afdfc118154f318d818b1633",
+    "cave/trainer.py": "9151c83466a2e200df3edf14336d185a8b2fa6d4d4b7c9876f55d6a6516bcc4e",
+    "cave/utils.py": "6bb2e8d817404208eb8b2a4c431ab2ad820981822d9ffb1742acb52adf3864e4",
+    "data/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "data/dataset_jpeg.py": "8d810b19f4305768c97429965d7f93ef5589fedbb21c63ac7a879308e03f7be2",
+    "diffusion/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "diffusion/codiff.py": "75e5f91293b09ce2eb88f2770b0bf88b7684adb70306c178b8c724b3e456912a",
+    "diffusion/models/attention.py": "dc92845728134ebd226938ea33380b36aca3b84f09069fd8125e5c7e29410d10",
+    "diffusion/models/autoencoder_kl.py": "4ca452fe27b20932d2d0bc5d7ab29acc2ba2bace95901cbec1a2779bffbf4346",
+    "diffusion/models/discriminator.py": "96a73e3d95801badc63c95cd1c0734d8091cd67a01505c61ad2df4870dbf06e8",
+    "diffusion/models/model_util.py": "d4a5e4c5001be9dc137f29a25b3109276c30316986800017f7f7c5bc9a51edfc",
+    "diffusion/models/unet_2d_condition.py": "1bfe8f7bd9dbf624e7ca9e497e0178ef16b0cc0aa743a61d26047077b007c4a9",
+    "diffusion/my_utils/devices.py": "55956d304730030c9a53e7f5770be16ac90a0be57fc91eae6971620665cbc0af",
+    "diffusion/my_utils/vaehook.py": "e40d937feb073fae007c26a30145ca72eb09e2d9155f11352c5c1ff7ed244539",
+    "diffusion/my_utils/wavelet_color_fix.py": "a315fcacf40cb160b38f0f4ce888de80eee28471080f5db2e64a67dc3893b379",
+    "main_test_codiff.py": "855d861ea9086c3163797d94214223b881be79859ca30548eb98fbc473d6d1b7",
+    "main_train_cave.py": "aa19db3b629b79809ce90676936740d9b1dc159aff730eecfe721172fbf32553",
+    "main_train_codiff.py": "173edabd89408871c7aa2e5796bcbe8f1473db43e71ae4e80e0ceff6cba5cda6",
+    "utils/utils_bnorm.py": "7808fab0e22eae633120936643a4258c4c050801810ea99cb091d04f96c7000e",
+    "utils/utils_image.py": "06dcc8442dbf21a4d7eda00f4bd20430f1b64cfd3f05f675be017a6902218972",
+    "utils/utils_logger.py": "8c5d1d7f16958311305bc2ea50311d62dbb3ecb3348addae31ae1a507f77a194",
+    "utils/utils_model.py": "4c4d06b154cb7b5c20898f5ccfe99adfcb8d1edb8028964355e50e3a3bf08dd9",
+    "utils/utils_option.py": "561e675a1272707bdad224be5b78470f61d0281be3e03e31952a675bdbe7131d",
+    "utils/utils_regularizers.py": "2e8d562f539c8fb31d13e0ef094209b3d8a83d21901f85b81580091df2d73926"
+  }
+}

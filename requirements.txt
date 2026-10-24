@@ -17,3 +17,6 @@ einops>=0.7
 
 pyiqa>=0.1.11
 transformers>=4.40,<6
+
+# Isolated released diffusion-baseline worker also uses Accelerate.
+accelerate>=0.21
