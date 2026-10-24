@@ -11,7 +11,7 @@ def tile_starts(length, tile, overlap):
     return starts
 
 
-def stitch(height, width, device, run_tile, tile=512, overlap=64):
+def stitch(height, width, device, run_tile, tile=512, overlap=64, clip=True):
     if tile < 1 or not 0 <= overlap < tile:
         raise ValueError("tiling requires 0 <= overlap < tile")
     output = torch.zeros(1, 3, height, width, device=device, dtype=torch.float32)
@@ -23,7 +23,12 @@ def stitch(height, width, device, run_tile, tile=512, overlap=64):
             restored = run_tile(top, left, h, w, count)
             if tuple(restored.shape) != (1, 3, h, w):
                 raise ValueError("tile restoration returned an unexpected shape")
-            output[..., top:top+h, left:left+w].add_(restored.float())
+            if not torch.isfinite(restored).all():
+                raise FloatingPointError("tile restoration returned non-finite RGB")
+            restored = restored.float()
+            if clip:
+                restored = restored.clamp(0, 1)
+            output[..., top:top+h, left:left+w].add_(restored)
             weights[..., top:top+h, left:left+w].add_(1)
             count += 1
     return output.div_(weights), count

@@ -29,26 +29,26 @@ eval:
   model_specs:
     jpeg:
       benchmark_input: cached_jpeg_file
-      common_tiling: {tile: 224, overlap: 32}
+      common_tiling: {tile: 224, overlap: 32, clip: true}
     meanflow_1:
       benchmark_input: cached_jpeg_file
-      common_tiling: {tile: 224, overlap: 32}
+      common_tiling: {tile: 224, overlap: 32, clip: true}
     meanflow_2:
       benchmark_input: cached_jpeg_file
-      common_tiling: {tile: 224, overlap: 32}
+      common_tiling: {tile: 224, overlap: 32, clip: true}
     fbcnn:
       benchmark_input: cached_jpeg_file
-      common_tiling: {tile: 224, overlap: 32}
+      common_tiling: {tile: 224, overlap: 32, clip: true}
       repo: external/FBCNN
       checkpoint: checkpoints/matched/fbcnn_color.pth
     promptcir:
       benchmark_input: cached_jpeg_file
-      common_tiling: {tile: 224, overlap: 32}
+      common_tiling: {tile: 224, overlap: 32, clip: true}
       repo: external/PromptCIR-NTIRE24
       checkpoint: checkpoints/matched/promptcir/checkpoint/model_best.pth
     jdec:
       benchmark_input: cached_jpeg_file
-      common_tiling: {tile: 224, overlap: 32}
+      common_tiling: {tile: 224, overlap: 32, clip: true}
       repo: external/JDEC
       checkpoint: checkpoints/matched/jdec.pth
   performance:

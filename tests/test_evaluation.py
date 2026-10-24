@@ -123,6 +123,21 @@ def test_common_tiling_preserves_every_pixel_including_irregular_edges():
     assert count > 1
 
 
+def test_common_tiling_clips_each_model_output_before_blending():
+    def run(top, left, height, width, index):
+        return torch.full((1, 3, height, width), -1.0 if index == 0 else 1.0)
+    output, count = stitch(2, 3, "cpu", run, tile=2, overlap=1)
+    assert count == 2
+    torch.testing.assert_close(output[..., 0], torch.zeros(1, 3, 2))
+    torch.testing.assert_close(output[..., 1], torch.full((1, 3, 2), .5))
+    torch.testing.assert_close(output[..., 2], torch.ones(1, 3, 2))
+
+
+def test_common_tiling_does_not_hide_infinite_predictions_by_clipping():
+    with pytest.raises(FloatingPointError):
+        stitch(2, 2, "cpu", lambda *args: torch.full((1, 3, 2, 2), float("inf")), tile=2, overlap=0)
+
+
 @pytest.mark.parametrize(
     "architecture,steps,solver,nfe",
     [
