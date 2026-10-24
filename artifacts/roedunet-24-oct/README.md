@@ -1,12 +1,14 @@
-# Evidence accompanying the revised paper
+# Historical summaries and separate CPU JVP evidence
 
-The PDF is [`../../roedunet-24-oct.pdf`](../../roedunet-24-oct.pdf). Full protocols, supported adapters, limitations, and commands are in [`../../evaluation.md`](../../evaluation.md).
+**Baseline comparisons in this directory are superseded by the fresh [matched evaluation](../matched-24-oct). They are historical records and do not supply the current comparison tables or figure.**
+
+Manuscript sources and paper PDFs are local-only and excluded from Git. Full protocols, supported adapters, limitations, and commands are in [`../../evaluation.md`](../../evaluation.md).
 
 ## Original summaries
 
 `quality_table.csv` transcribes Table I, including per-row provenance. Per the author's clarification, all methods except SODiff were evaluated locally; SODiff quality scores come from its paper. `system_table.csv` transcribes the reported system summary, with the SD 2.1 architectural proxy labeled separately. These files preserve reported aggregate values; they are not original raw evaluation records, independent reruns, or evidence of checkpoint-level SODiff timing.
 
-Figure 1 is regenerated from these CSVs using `python scripts/render_paper_comparison.py`. Its hollow SODiff-quality/proxy-time point is illustrative. No frontier or SODiff speedup is established by that pairing. The original one-update point is omitted because this figure uses the operating points tabulated in the revised paper.
+The previous Figure 1 was generated from these historical CSVs. The current `scripts/render_paper_comparison.py` requires a complete validated matched run and does not accept these transcribed summaries. Its hollow SODiff-quality/proxy-time point is illustrative. No frontier or SODiff speedup is established by that pairing. The original one-update point is omitted because this figure uses the operating points tabulated in the revised paper.
 
 ## New JVP verification
 
@@ -14,7 +16,7 @@ Figure 1 is regenerated from these CSVs using `python scripts/render_paper_compa
 
 The reports contain the checkpoint SHA-256, audit script SHA-256, settings, environment, metrics, and loss/memory scope. Paths are published as basenames. `src/audit_jvp.py` regenerates the checks; checkpoint bytes must match the recorded hash to reproduce the same trained case. The synthetic inputs isolate derivative behavior and are not restoration-quality evaluations.
 
-CUDA was unavailable in the revision session. No new GPU memory, throughput, or 128×128/batch-32 verification was performed. The historical JVP GPU memory/speed table is withdrawn from the paper because its measurement boundaries cannot be recovered. New CPU verification does not repair those historical GPU records.
+These archived derivative checks were performed on CPU. No new GPU memory, throughput, or 128×128/batch-32 verification was performed. The historical JVP GPU memory/speed table is withdrawn from the paper because its measurement boundaries cannot be recovered. New CPU verification does not repair those historical GPU records.
 
 ## Review disposition
 

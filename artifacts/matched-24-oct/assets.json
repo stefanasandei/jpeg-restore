@@ -1,0 +1,258 @@
+{
+  "recorded_utc": "2026-10-24T12:41:30.752019+00:00",
+  "notes": "Unknown original download times remain null. File mtime is not represented as a known download date for existing caches or package files.",
+  "assets": [
+    {
+      "file": "checkpoints/matched/fbcnn_color.pth",
+      "source_url": "https://github.com/jiaxi-jiang/FBCNN/releases/download/v1.0/fbcnn_color.pth",
+      "size_bytes": 287755111,
+      "sha256": "8b0e4ef23d59cf7ac934a342cb31a17619e4fa4a0b3374a9d78c5174312387e8",
+      "file_mtime_utc": "2026-10-24T11:32:44.285978+00:00",
+      "download_completed_utc": "2026-10-24T11:32:44.285978+00:00",
+      "acquisition": "downloaded",
+      "first_observed_utc": "2026-10-24T12:41:28.794937+00:00",
+      "timestamp_basis": "last local write of download performed in this session"
+    },
+    {
+      "file": "checkpoints/matched/jdec.pth",
+      "source_url": "https://drive.google.com/file/d/1_TLoGHLBtdbPdApRmI0y0YW2nEqnO8Dr/view",
+      "size_bytes": 479446181,
+      "sha256": "ab71edd4351d69cb08628a8b1310ddb8ec36f5cb052695230bbdddae1441015b",
+      "file_mtime_utc": "2024-10-27T09:22:47+00:00",
+      "download_completed_utc": null,
+      "acquisition": "existing_cache",
+      "first_observed_utc": "2026-10-24T12:41:29.067762+00:00",
+      "verification_download": {
+        "started_utc": "2026-10-24T12:18:48.359082+00:00",
+        "completed_utc": "2026-10-24T12:19:01.785463+00:00",
+        "source_url": "https://drive.google.com/uc?id=1_TLoGHLBtdbPdApRmI0y0YW2nEqnO8Dr",
+        "size_bytes": 479446181,
+        "sha256": "ab71edd4351d69cb08628a8b1310ddb8ec36f5cb052695230bbdddae1441015b",
+        "purpose": "independent verification download; original local acquisition time unknown"
+      }
+    },
+    {
+      "file": "checkpoints/matched/promptcir/checkpoint/model_best.pth",
+      "source_url": "https://drive.google.com/file/d/1Ll673246UclKHy_MwEIfcTOtW658UZ3Q/view",
+      "size_bytes": 141076981,
+      "sha256": "728a2f3b9876b010c2c13386999baeb1a34023a3b2d6ded9c3419dc893ef6c47",
+      "file_mtime_utc": "2024-04-07T08:00:49+00:00",
+      "download_completed_utc": null,
+      "acquisition": "existing_cache",
+      "first_observed_utc": "2026-10-24T12:41:29.149507+00:00",
+      "verification_download": {
+        "started_utc": "2026-10-24T12:19:02.109908+00:00",
+        "completed_utc": "2026-10-24T12:19:07.827152+00:00",
+        "source_url": "https://drive.google.com/uc?id=1Ll673246UclKHy_MwEIfcTOtW658UZ3Q",
+        "size_bytes": 141076981,
+        "sha256": "728a2f3b9876b010c2c13386999baeb1a34023a3b2d6ded9c3419dc893ef6c47",
+        "purpose": "independent verification download; original local acquisition time unknown"
+      }
+    },
+    {
+      "file": "checkpoints/matched/meanflow/meanflow_jpeg_qf5_20.pth",
+      "source_url": "https://huggingface.co/asandeistefan/jpeg-restore-meanflows/resolve/33315831b6b342d3b8ddbdc70aa11cb84e55c66b/meanflow_jpeg_qf5_20.pth",
+      "size_bytes": 261352510,
+      "sha256": "fbb573706c64ae90da85e47d1ff3377734264142460770c54ebadc50a4ba4caa",
+      "file_mtime_utc": "2026-10-24T11:49:56.200802+00:00",
+      "download_completed_utc": "2026-10-24T11:49:58.390800+00:00",
+      "acquisition": "downloaded",
+      "first_observed_utc": "2026-10-24T12:41:29.300065+00:00",
+      "hub_revision": "33315831b6b342d3b8ddbdc70aa11cb84e55c66b",
+      "hub_etag": "fbb573706c64ae90da85e47d1ff3377734264142460770c54ebadc50a4ba4caa",
+      "timestamp_basis": "Hugging Face download metadata"
+    },
+    {
+      "file": "checkpoints/matched/clip-vit-base-patch16/config.json",
+      "source_url": "https://huggingface.co/openai/clip-vit-base-patch16/resolve/57c216476eefef5ab752ec549e440a49ae4ae5f3/config.json",
+      "size_bytes": 4104,
+      "sha256": "eaf1c9089a8553c913d27ea66407f8bfc2be9989c80c9f331ddb3d63d4c5e8ad",
+      "file_mtime_utc": "2026-10-24T11:34:22.624089+00:00",
+      "download_completed_utc": "2026-10-24T11:34:22.627207+00:00",
+      "acquisition": "downloaded",
+      "first_observed_utc": "2026-10-24T12:41:29.300407+00:00",
+      "hub_revision": "57c216476eefef5ab752ec549e440a49ae4ae5f3",
+      "hub_etag": "9f7102db4ae77c02982bfec1c16a63039fbc78db",
+      "timestamp_basis": "Hugging Face download metadata"
+    },
+    {
+      "file": "checkpoints/matched/clip-vit-base-patch16/merges.txt",
+      "source_url": "https://huggingface.co/openai/clip-vit-base-patch16/resolve/57c216476eefef5ab752ec549e440a49ae4ae5f3/merges.txt",
+      "size_bytes": 524619,
+      "sha256": "9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a",
+      "file_mtime_utc": "2026-10-24T11:32:13.329286+00:00",
+      "download_completed_utc": "2026-10-24T11:32:13.330569+00:00",
+      "acquisition": "downloaded",
+      "first_observed_utc": "2026-10-24T12:41:29.300868+00:00",
+      "hub_revision": "57c216476eefef5ab752ec549e440a49ae4ae5f3",
+      "hub_etag": "76e821f1b6f0a9709293c3b6b51ed90980b3166b",
+      "timestamp_basis": "Hugging Face download metadata"
+    },
+    {
+      "file": "checkpoints/matched/clip-vit-base-patch16/preprocessor_config.json",
+      "source_url": "https://huggingface.co/openai/clip-vit-base-patch16/resolve/57c216476eefef5ab752ec549e440a49ae4ae5f3/preprocessor_config.json",
+      "size_bytes": 316,
+      "sha256": "910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd",
+      "file_mtime_utc": "2026-10-24T11:34:22.656090+00:00",
+      "download_completed_utc": "2026-10-24T11:34:22.657754+00:00",
+      "acquisition": "downloaded",
+      "first_observed_utc": "2026-10-24T12:41:29.300939+00:00",
+      "hub_revision": "57c216476eefef5ab752ec549e440a49ae4ae5f3",
+      "hub_etag": "5a12a1eb250987a4eee0e3e7d7338c4b22724be1",
+      "timestamp_basis": "Hugging Face download metadata"
+    },
+    {
+      "file": "checkpoints/matched/clip-vit-base-patch16/pytorch_model.bin",
+      "source_url": "https://huggingface.co/openai/clip-vit-base-patch16/resolve/57c216476eefef5ab752ec549e440a49ae4ae5f3/pytorch_model.bin",
+      "size_bytes": 598641023,
+      "sha256": "ec89c7b09c749a60aae3c9cd910516f24b58214a7df060b48962d14c469cfbf0",
+      "file_mtime_utc": "2026-10-24T11:32:19.846809+00:00",
+      "download_completed_utc": "2026-10-24T11:32:25.724923+00:00",
+      "acquisition": "downloaded",
+      "first_observed_utc": "2026-10-24T12:41:29.679734+00:00",
+      "hub_revision": "57c216476eefef5ab752ec549e440a49ae4ae5f3",
+      "hub_etag": "ec89c7b09c749a60aae3c9cd910516f24b58214a7df060b48962d14c469cfbf0",
+      "timestamp_basis": "Hugging Face download metadata"
+    },
+    {
+      "file": "checkpoints/matched/clip-vit-base-patch16/special_tokens_map.json",
+      "source_url": "https://huggingface.co/openai/clip-vit-base-patch16/resolve/57c216476eefef5ab752ec549e440a49ae4ae5f3/special_tokens_map.json",
+      "size_bytes": 389,
+      "sha256": "f8c0d6c39aee3f8431078ef6646567b0aba7f2246e9c54b8b99d55c22b707cbf",
+      "file_mtime_utc": "2026-10-24T11:34:22.625089+00:00",
+      "download_completed_utc": "2026-10-24T11:34:22.627251+00:00",
+      "acquisition": "downloaded",
+      "first_observed_utc": "2026-10-24T12:41:29.680137+00:00",
+      "hub_revision": "57c216476eefef5ab752ec549e440a49ae4ae5f3",
+      "hub_etag": "9bfb42aa97dcd61e89f279ccaee988bccb4fabae",
+      "timestamp_basis": "Hugging Face download metadata"
+    },
+    {
+      "file": "checkpoints/matched/clip-vit-base-patch16/tokenizer_config.json",
+      "source_url": "https://huggingface.co/openai/clip-vit-base-patch16/resolve/57c216476eefef5ab752ec549e440a49ae4ae5f3/tokenizer_config.json",
+      "size_bytes": 905,
+      "sha256": "3f74b6a4d97fee70b3b96921a687fc5e3f2fb583f5f81e7c178c0c22281beade",
+      "file_mtime_utc": "2026-10-24T11:34:22.577089+00:00",
+      "download_completed_utc": "2026-10-24T11:34:22.578354+00:00",
+      "acquisition": "downloaded",
+      "first_observed_utc": "2026-10-24T12:41:29.680214+00:00",
+      "hub_revision": "57c216476eefef5ab752ec549e440a49ae4ae5f3",
+      "hub_etag": "a104224724ffb0721da7bee21ab59081b10fccef",
+      "timestamp_basis": "Hugging Face download metadata"
+    },
+    {
+      "file": "checkpoints/matched/clip-vit-base-patch16/vocab.json",
+      "source_url": "https://huggingface.co/openai/clip-vit-base-patch16/resolve/57c216476eefef5ab752ec549e440a49ae4ae5f3/vocab.json",
+      "size_bytes": 961143,
+      "sha256": "3f0c4f7d2086b61b38487075278ea9ed04edb53a03cbb045b86c27190fa8fb69",
+      "file_mtime_utc": "2026-10-24T11:32:13.456158+00:00",
+      "download_completed_utc": "2026-10-24T11:32:13.457566+00:00",
+      "acquisition": "downloaded",
+      "first_observed_utc": "2026-10-24T12:41:29.681112+00:00",
+      "hub_revision": "57c216476eefef5ab752ec549e440a49ae4ae5f3",
+      "hub_etag": "4297ea6a8d2bae1fea8f48b45e257814dcb11f69",
+      "timestamp_basis": "Hugging Face download metadata"
+    },
+    {
+      "file": "checkpoints/matched/torch-cache/hub/checkpoints/alexnet-owt-7be5be79.pth",
+      "source_url": "https://download.pytorch.org/models/alexnet-owt-7be5be79.pth",
+      "size_bytes": 244408911,
+      "sha256": "7be5be791159472b1fbf3c69796f7cb30dca7ad8466c2df70058c37116cdee02",
+      "file_mtime_utc": "2026-09-30T19:47:54.203665+00:00",
+      "download_completed_utc": null,
+      "acquisition": "existing_cache",
+      "first_observed_utc": "2026-10-24T12:41:29.821181+00:00"
+    },
+    {
+      "file": "checkpoints/matched/torch-cache/hub/checkpoints/vgg16-397923af.pth",
+      "source_url": "https://download.pytorch.org/models/vgg16-397923af.pth",
+      "size_bytes": 553433881,
+      "sha256": "397923af8e79cdbb6a7127f12361acd7a2f83e06b05044ddf496e83de57a5bf0",
+      "file_mtime_utc": "2026-10-08T20:39:21.749542+00:00",
+      "download_completed_utc": null,
+      "acquisition": "existing_cache",
+      "first_observed_utc": "2026-10-24T12:41:30.139546+00:00"
+    },
+    {
+      "file": "checkpoints/matched/torch-cache/hub/pyiqa/musiq_koniq_ckpt-e95806b9.pth",
+      "source_url": "https://huggingface.co/chaofengc/IQA-PyTorch-Weights/resolve/main/musiq_koniq_ckpt-e95806b9.pth",
+      "size_bytes": 108610983,
+      "sha256": "e95806b9eae5f3814c410f574ba8e552362bd5bc63d758ed5b97860f5d6185aa",
+      "file_mtime_utc": "2026-10-24T11:37:32.625067+00:00",
+      "download_completed_utc": null,
+      "acquisition": "existing_cache",
+      "first_observed_utc": "2026-10-24T12:41:30.203358+00:00"
+    },
+    {
+      "file": "checkpoints/matched/torch-cache/hub/pyiqa/ckpt_koniq10k.pt",
+      "source_url": "https://huggingface.co/chaofengc/IQA-PyTorch-Weights/resolve/main/ckpt_koniq10k.pt",
+      "size_bytes": 543335435,
+      "sha256": "a207f8ab57322e6be38ff5c8d019301dc032b454bef21c3c9f9dbf7974eebff6",
+      "file_mtime_utc": "2026-10-24T11:37:46.494211+00:00",
+      "download_completed_utc": null,
+      "acquisition": "existing_cache",
+      "first_observed_utc": "2026-10-24T12:41:30.518997+00:00"
+    },
+    {
+      "file": "${HOME}/.local/lib/python3.14/site-packages/torchmetrics/functional/image/dists_models/weights.pt",
+      "source_url": "https://github.com/Lightning-AI/torchmetrics",
+      "size_bytes": 12288,
+      "sha256": "f5e65c96230b7f6ca995691647d482237e4cab8a50c5c4a5784f219ef0748218",
+      "file_mtime_utc": "2026-01-24T13:37:17.496359+00:00",
+      "download_completed_utc": null,
+      "acquisition": "installed_package",
+      "first_observed_utc": "2026-10-24T12:41:30.519436+00:00"
+    },
+    {
+      "file": "${HOME}/.local/lib/python3.14/site-packages/torchmetrics/functional/image/lpips_models/alex.pth",
+      "source_url": "https://github.com/Lightning-AI/torchmetrics",
+      "size_bytes": 6009,
+      "sha256": "df73285e35b22355a2df87cdb6b70b343713b667eddbda73e1977e0c860835c0",
+      "file_mtime_utc": "2026-01-24T13:37:17.496494+00:00",
+      "download_completed_utc": null,
+      "acquisition": "installed_package",
+      "first_observed_utc": "2026-10-24T12:41:30.519498+00:00"
+    },
+    {
+      "file": "checkpoints/matched/hub-cache/models--timm--vit_base_patch8_224.augreg2_in21k_ft_in1k/snapshots/907a22023d1c918aae6d7f340275616a25f7f2ff/model.safetensors",
+      "source_url": "https://huggingface.co/timm/vit_base_patch8_224.augreg2_in21k_ft_in1k/resolve/907a22023d1c918aae6d7f340275616a25f7f2ff/model.safetensors",
+      "size_bytes": 346321582,
+      "sha256": "45333d3cd3366ed0f57e94b93655eeb8895b4610ddf2a5a7ca7b2410874ea0c9",
+      "file_mtime_utc": "2026-10-24T12:33:35.843972+00:00",
+      "download_completed_utc": null,
+      "acquisition": "existing_cache",
+      "first_observed_utc": "2026-10-24T12:41:30.750678+00:00",
+      "hub_revision": "907a22023d1c918aae6d7f340275616a25f7f2ff"
+    },
+    {
+      "file": "checkpoints/matched/dct-extension/dct_manip/dct_manip.so",
+      "source_url": "https://github.com/WooKyoungHan/JDEC",
+      "size_bytes": 343432,
+      "sha256": "be870f05cfc45f2664c7ab116780afd58e46140da2b270d7e152f1f002b94ec8",
+      "file_mtime_utc": "2026-10-24T11:35:22.866311+00:00",
+      "download_completed_utc": null,
+      "acquisition": "existing_cache",
+      "first_observed_utc": "2026-10-24T12:41:30.751316+00:00"
+    },
+    {
+      "file": "external/JDEC/dct_manip/dct_manip.cpp",
+      "source_url": "https://github.com/WooKyoungHan/JDEC",
+      "size_bytes": 29861,
+      "sha256": "7f2c32cd53dfe16fb23e0304174c2f4c37bb680eed2203d94e04511b7f7f73c7",
+      "file_mtime_utc": "2026-10-24T11:51:20.879626+00:00",
+      "download_completed_utc": null,
+      "acquisition": "existing_cache",
+      "first_observed_utc": "2026-10-24T12:41:30.751388+00:00"
+    },
+    {
+      "file": "/usr/lib/libjpeg.so",
+      "source_url": "system libjpeg",
+      "size_bytes": 661600,
+      "sha256": "c32f9e867726c3687396f477e5a3dd5a0553bfec5188bbdabb51451960a3b455",
+      "file_mtime_utc": "2026-03-28T09:17:54+00:00",
+      "download_completed_utc": null,
+      "acquisition": "existing_cache",
+      "first_observed_utc": "2026-10-24T12:41:30.751936+00:00"
+    }
+  ]
+}

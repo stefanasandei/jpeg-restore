@@ -1,0 +1,18 @@
+{
+  "ab71edd4351d69cb08628a8b1310ddb8ec36f5cb052695230bbdddae1441015b": {
+    "started_utc": "2026-10-24T12:18:48.359082+00:00",
+    "completed_utc": "2026-10-24T12:19:01.785463+00:00",
+    "source_url": "https://drive.google.com/uc?id=1_TLoGHLBtdbPdApRmI0y0YW2nEqnO8Dr",
+    "size_bytes": 479446181,
+    "sha256": "ab71edd4351d69cb08628a8b1310ddb8ec36f5cb052695230bbdddae1441015b",
+    "purpose": "independent verification download; original local acquisition time unknown"
+  },
+  "728a2f3b9876b010c2c13386999baeb1a34023a3b2d6ded9c3419dc893ef6c47": {
+    "started_utc": "2026-10-24T12:19:02.109908+00:00",
+    "completed_utc": "2026-10-24T12:19:07.827152+00:00",
+    "source_url": "https://drive.google.com/uc?id=1Ll673246UclKHy_MwEIfcTOtW658UZ3Q",
+    "size_bytes": 141076981,
+    "sha256": "728a2f3b9876b010c2c13386999baeb1a34023a3b2d6ded9c3419dc893ef6c47",
+    "purpose": "independent verification download; original local acquisition time unknown"
+  }
+}

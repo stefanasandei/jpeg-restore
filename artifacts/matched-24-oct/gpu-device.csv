@@ -1,0 +1,2 @@
+name, driver_version, memory.total [MiB], power.limit [W], clocks.max.graphics [MHz], clocks.max.memory [MHz]
+NVIDIA GeForce RTX 3090, 595.71.05, 24576 MiB, 350.00 W, 2100 MHz, 9751 MHz

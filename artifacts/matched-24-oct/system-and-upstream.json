@@ -1,0 +1,136 @@
+{
+  "recorded_utc": "2026-10-24T12:22:49.457037+00:00",
+  "commands": [
+    {
+      "command": [
+        "lscpu"
+      ],
+      "returncode": 0,
+      "stdout": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           43 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  12\nOn-line CPU(s) list:                     0-11\nVendor ID:                               AuthenticAMD\nModel name:                              AMD Ryzen 5 3600 6-Core Processor\nCPU family:                              23\nModel:                                   113\nThread(s) per core:                      2\nCore(s) per socket:                      6\nSocket(s):                               1\nStepping:                                0\nMicrocode version:                       0x8701034\nFrequency boost:                         enabled\nCPU(s) scaling MHz:                      70%\nCPU max MHz:                             4208.2031\nCPU min MHz:                             2200.0000\nBogoMIPS:                                7186.68\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es\nVirtualization:                          AMD-V\nL1d cache:                               192 KiB (6 instances)\nL1i cache:                               192 KiB (6 instances)\nL2 cache:                                3 MiB (6 instances)\nL3 cache:                                32 MiB (2 instances)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-11\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; untrained return thunk; SMT enabled with STIBP protection\nVulnerability Spec rstack overflow:      Mitigation; Safe RET\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Mitigation; IBPB before exit to userspace\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "clang++",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout": "clang version 19.1.7\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm19/bin\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "g++",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout": "g++ (GCC) 16.1.1 20260430\nCopyright (C) 2026 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "ldd",
+        "checkpoints/matched/dct-extension/dct_manip/dct_manip.so"
+      ],
+      "returncode": 0,
+      "stdout": "\tlinux-vdso.so.1 (0x00007fd988444000)\n\tlibjpeg.so.8 => /usr/lib/libjpeg.so.8 (0x00007fd988326000)\n\tlibc10.so => not found\n\tlibtorch_cpu.so => not found\n\tlibtorch.so => not found\n\tlibtorch_python.so => not found\n\tlibstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x00007fd988000000)\n\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007fd987ecd000)\n\tlibgcc_s.so.1 => /usr/lib/libgcc_s.so.1 (0x00007fd9882f7000)\n\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007fd987c00000)\n\t/usr/lib64/ld-linux-x86-64.so.2 (0x00007fd988446000)\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "pkg-config",
+        "--modversion",
+        "libjpeg"
+      ],
+      "returncode": 0,
+      "stdout": "3.1.4.1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "uname",
+        "-srmo"
+      ],
+      "returncode": 0,
+      "stdout": "Linux 7.0.5-arch1-1 x86_64 GNU/Linux\n",
+      "stderr": ""
+    }
+  ],
+  "upstream_checkouts": {
+    "FBCNN": {
+      "revision": "54d1831927506b3247e2d4d245abb4f4dab1a1cd",
+      "status_porcelain": "?? models/__pycache__/\n",
+      "tracked_source_sha256": {
+        "data/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "data/dataset_jpeg.py": "cb0f908f0f243552fcbdfe8eb81332f67c7caf217701c8f713959ac936665de1",
+        "data/dataset_jpeggray.py": "24575b53d6ddb7f3a35d52165b8343b234c150e9f0a06a8f8fc4b8adab0e8a3e",
+        "data/dataset_jpeggraydouble.py": "bc5cdba5f1d6bca9faac4a47e830c1082d87a143edfebe8ea35400fc5df8c929",
+        "data/select_dataset.py": "f8a34ada7d755d0160bbfe5827afd1035b70fd1760406fe3458dcac67576e932",
+        "main_test_fbcnn_color.py": "0367416fb68c9ab2c6f2f130d2a6620048e2440a800c803a07bbda8a9ecc1a64",
+        "main_test_fbcnn_color_real.py": "301653872b2fe62a8a32d2190d024e1d914a9d4386ceff5cb19eaad1a204e872",
+        "main_test_fbcnn_gray.py": "619f4ea70c631ff41eb01cabce782e87dda0ae9086b9b7a329b9768a0124c13e",
+        "main_test_fbcnn_gray_doublejpeg.py": "f4e012cf2f2c1c4198d6848664c988988ac3d3e84fae24a89ce03fe98b8584a0",
+        "main_train_fbcnn.py": "1def7a44409e9438e75b62e2012a0a61425f1c39852dd006e7af0403773cf684",
+        "models/loss.py": "cef95cf3e5dd0f955a5d4453bacd8001f36be15415d92a738fbe188e82c667cd",
+        "models/loss_ssim.py": "57a2d05f38faffc0d9a724c0f4c9ae2d8e29193c08c96d47e64a0d6790c4ae80",
+        "models/model_base.py": "8bb060318155b053c294d3c0c7ac99c0f38c469426d35a0a5a1a3e2afd833dc6",
+        "models/model_fbcnn.py": "2c19019215fe17832f0f490a8ee1d1b3fead482f0926d489ce509ff232682305",
+        "models/network_fbcnn.py": "e1afc1f6483d57b774365467393216508f29a708b576dc973bad41bae67e8d03",
+        "models/select_model.py": "f11166bc9263521c257c7785f03e58167e079542a09f063ade8c452c15b8d7d0",
+        "models/select_network.py": "aeb2d276487a0b7c1572190a7068a020549973d2344360c48de534472b061181",
+        "utils/utils_bnorm.py": "7808fab0e22eae633120936643a4258c4c050801810ea99cb091d04f96c7000e",
+        "utils/utils_image.py": "06dcc8442dbf21a4d7eda00f4bd20430f1b64cfd3f05f675be017a6902218972",
+        "utils/utils_logger.py": "8c5d1d7f16958311305bc2ea50311d62dbb3ecb3348addae31ae1a507f77a194",
+        "utils/utils_model.py": "4c4d06b154cb7b5c20898f5ccfe99adfcb8d1edb8028964355e50e3a3bf08dd9",
+        "utils/utils_option.py": "732d6c01e96cdd07c5a20fcd68bdb085b65c6097176de9a664bfa5feba5a5fbe",
+        "utils/utils_regularizers.py": "2e8d562f539c8fb31d13e0ef094209b3d8a83d21901f85b81580091df2d73926"
+      },
+      "tracked_changes": "",
+      "status_note": "Untracked __pycache__ entries, if present, are generated bytecode; tracked source hashes are recorded below."
+    },
+    "JDEC": {
+      "revision": "e9fe8354754dd062dbf1defebb220e290507edd2",
+      "status_porcelain": "",
+      "tracked_source_sha256": {
+        "configs/train_JDEC.yaml": "8d38164e58f27362864818f8060cad69e7ee73099568fffd580568724abdacc3",
+        "datasets/__init__.py": "f6deaabdde7d62c8340ba3fbcb2d1420b4a1da2c6475102022bb221b32ebc991",
+        "datasets/datasets.py": "0d0570d34d02d989213118bf4ea485b5cb439439336f05cc967b8124a5ecd2e3",
+        "datasets/image_folder_paired.py": "6bc17742f57b722f4470fa82a6468e3b6994c0ea9f4f18c8aa226ccc7dee107e",
+        "datasets/wrappers_jpeg.py": "d48d23a03c8b7d8c78cfe9d0f24f5056b45976e8e224555a3d4a69cc9d47d4e2",
+        "dct_manip/dct_manip.cpp": "7f2c32cd53dfe16fb23e0304174c2f4c37bb680eed2203d94e04511b7f7f73c7",
+        "dct_manip/setup.py": "b82725012c7be54c9b3e2745a0282c094f88169aa17ae9521c743a85276a33ba",
+        "environment.yaml": "9ca582ed9c03c228afc375d65135d935ef6e536e50c950af2c798e41e2a36704",
+        "models/JDEC.py": "82271024254b497b932606ef4309802a771c229c00685548752cc71e22121fc4",
+        "models/__init__.py": "6b3f19bd924f5a7d864300767db394d21ab19f8eb0f7a16701aa46a3ac96a5c7",
+        "models/mlp.py": "54093e08d573d154e98cad781a006c45b79941ba86e538ff3c81df766126f238",
+        "models/models.py": "5c0cd5aeee60f488b74ec0d90b97c52cf1638098818097a9e5c402afb58a4d04",
+        "models/plainvit.py": "43b6a36b178e2c89452f1d393d6798ee3fc6bd9e473aa4782171f76284f73e28",
+        "models/swinirv2.py": "42a775a8c501a217318bac5bb9b83dbaebcda0152fbbfd0d62e406f2c39e0281",
+        "test.py": "3eb35848bedff68144f53a87d0a524bfb68bf30663cf0d995209a12a951b1702",
+        "train.py": "b002ca0cd88ccd42783788b8ea23e270cfaad37d2ded10e3f24a2b98c58026da",
+        "utils/cls_transforms.py": "b2f38f8a4188d93b27c2f026b352fe6595ea9c9e3d5bdd731bd1bfbeacbccf2d",
+        "utils/configs.py": "b00aa3703e9f52cc33d663e18a26a8dea04e6035dcd0b49fd86f7b023c6e08a8",
+        "utils/custom_optims.py": "13b0fae34a43f51d72282fb0aada90d0b41a2010c2e358ab8689028fb7d3ea7d",
+        "utils/custom_sampler.py": "fc1c80cb7164ceb7c8fc41dd0da9768eca429526b21b656059caf10c542294ae",
+        "utils/custom_transforms.py": "7b9f43e04d7e06f0366ac5603fdcfc22b1dcb941c760efa10521b0c02eee1816",
+        "utils/dct_ops.py": "8b69c53b983295917d128175486e8cd9f678607de1176f6b32ec941d5c29df2e",
+        "utils/dct_torch_utils.py": "c35207d60d6eb01b4399d9031e179441268695871fc40a89e3b55e6259fee601",
+        "utils/mp_scripts.py": "48e736c3c4ea0d4173afaea6ce281a4f6490ab26d7f00236e38686ec852d9977",
+        "utils/pipeline_utils.py": "7ae0c11c6efe9ff25fab4ba69cef3d95f41ad4fc729566e104b412c215a32f22",
+        "utils_.py": "9918c703674589b0abba008e95adf87a630025c3bd54cf0248fe2940fd44810f"
+      },
+      "tracked_changes": "",
+      "status_note": "Untracked __pycache__ entries, if present, are generated bytecode; tracked source hashes are recorded below."
+    },
+    "PromptCIR-NTIRE24": {
+      "revision": "3506b1aa0e6588fdf4e0b8345d90679adf1e2220",
+      "status_porcelain": "",
+      "tracked_source_sha256": {
+        "model.py": "23a3ed6599eed80abe2f3651468b7a3c9eeb4853e6cb2082a798d740e5012735",
+        "test_model.py": "9a1efa3793dda7f6f08e18eb7061dbb9e32094f368dfc73b5d812eec93f0983e"
+      },
+      "tracked_changes": "",
+      "status_note": "Untracked __pycache__ entries, if present, are generated bytecode; tracked source hashes are recorded below."
+    }
+  }
+}

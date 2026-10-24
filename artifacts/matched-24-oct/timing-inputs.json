@@ -1,0 +1,25 @@
+{
+  "recorded_utc": "2026-10-24T12:44:20.258914+00:00",
+  "generation": "Regenerated exactly from the run configuration with the same deterministic synthetic_input function and codec build; performance inputs are not drawn from the quality datasets.",
+  "generator_source_sha256": "fd8cdd3ae6a09dfc6c75daeea0d9b5eeedd000f35941d796d5b335ea633d7f6f",
+  "inputs": [
+    {
+      "file": "timing-inputs/512x512.jpg",
+      "height": 512,
+      "width": 512,
+      "quality_factor": 10,
+      "seed": 0,
+      "sha256": "20a924bc2ca4a43f10402ce02d1cb9c5cf75bf765edd85cc0cf0ea5812715fd0",
+      "size_bytes": 29472
+    },
+    {
+      "file": "timing-inputs/1024x1024.jpg",
+      "height": 1024,
+      "width": 1024,
+      "quality_factor": 10,
+      "seed": 0,
+      "sha256": "ced294372c39fdd09bfd03c8a59311f45285ef841c2c5c9813f187b9dc928424",
+      "size_bytes": 116300
+    }
+  ]
+}

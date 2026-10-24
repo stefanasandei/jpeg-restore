@@ -5,20 +5,18 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![Hugging Face](https://img.shields.io/badge/Hugging%20Face-weights-FFD21E?logo=huggingface&logoColor=white)](https://huggingface.co/asandeistefan/jpeg-restore-meanflows)
 
-*We propose a model for generative JPEG restoration capable of up to 20 img/s, at 720p resolution on a single RTX 3090.*
+*A 65M-parameter generative JPEG restorer trained from scratch for one- or two-update MeanFlow sampling.*
 
 ## ⚡ Highlights
 
-* **Quality and efficiency:** competitive perceptual quality with 8.05 images/s at 1024×1024 on the reported RTX 3090 configuration
+* **Auditable evaluation:** shared JPEG inputs, trained checkpoints, tiling, precision, metrics, and timing boundaries across all compared methods.
 * **Wavelet-Domain Processing:** Replaces heavy learned VAEs with a **two-level 2D Haar transform**, avoiding lossy compression and latency bottlenecks.
 * **Linear DiT:** a 65M-parameters model trained from scratch, with [Rank Enhanced Linear Attention](https://www.alphaxiv.org/abs/2505.16157) in every block
 * **1–2 Step Inference:** Trained with **Mean Flows** for generation, without multi-stage distillation pipelines.
 
-> Note: the current checkpoint has the best metrics for 2-steps, however similar quality can be achieved, at double the speed, with 1-step. More training, in progress, will fix this.
-
 ## 🛠️ Setup
 
-Requirements: Python 3.12+, Pytorch 2.0+, any GPU with at least 1GB of VRAM.
+Install the project dependencies below. The recorded matched evaluation uses an RTX 3090 with 24 GiB VRAM; its exact software environment is archived with the results.
 
 Model checkpoint: [huggingface](https://huggingface.co/asandeistefan/jpeg-restore-meanflows)
 
@@ -54,35 +52,15 @@ Check the `./config` folder for more training and eval configurations, used in o
 
 ### 3. Evaluation
 
-See [evaluation.md](./evaluation.md) for full-image quality metrics, performance benchmarks, and the other models used in the paper.
+See [evaluation.md](./evaluation.md) for the matched quality/performance protocol, asset hashes, acquisition metadata, and GPU reproduction command.
 
 ## 📊 Benchmark Results
 
-Check our paper for the full results. Reported results use 2-step inference for our model. SODiff quality scores are quoted from its paper; its checkpoint was not evaluated locally. Metrics at QF20:
+The matched evaluation is collecting new results for FBCNN, JDEC, PromptCIR, and MeanFlow (one/two updates), plus JPEG. Every method uses the same image cohort and JPEG bitstreams, 224×224 tiles with shared overlap blending, FP32 tensors with TF32 acceleration, metric implementations, and cached-JPEG-to-RGB timing boundary. External paper scores and architectural timing proxies are excluded.
 
-| Dataset   | Method |  LPIPS ↓   |  DISTS ↓   |  MUSIQ ↑  |  MANIQA ↑  | CLIPIQA ↑  |
-| --------- | ------ | :--------: | :--------: | :-------: | :--------: | :--------: |
-| LIVE-1    | SODiff |   0.1237   | **0.0763** | **74.11** | **0.5272** | **0.7587** |
-| LIVE-1    | *Ours* | **0.0917** |   0.1008   |   71.90   |   0.3751   |   0.7358   |
-| Urban100  | SODiff |   0.0846   | **0.0734** | **72.63** | **0.5561** |   0.6733   |
-| Urban100  | *Ours* | **0.0538** |   0.1368   |   70.24   |   0.4682   | **0.7172** |
-| DIV2K-val | SODiff |   0.1295   | **0.0622** | **66.49** | **0.3984** |   0.6398   |
-| DIV2K-val | *Ours* | **0.0995** |   0.0828   |   64.62   |   0.3427   | **0.6820** |
+See [the protocol and GPU command](evaluation.md), [asset identities](artifacts/matched-24-oct/assets.json), and [evidence archive](artifacts/matched-24-oct). Results remain provisional until the complete-run validator passes; a partial sweep is not a completed comparison.
 
-System-level efficiency at 1024×1024, batch size 1, single RTX 3090:
-
-| Method | Params (M) |  NFE  | Latency (s) | Throughput (img/s) |
-| ------ | :--------: | :---: | :---------: | :----------------: |
-| FBCNN  |    70.1    |   1   |    0.275    |        3.63        |
-| SD 2.1 architecture proxy | 1288 | 1 | 0.610 | 1.64 |
-| SUPIR  |    4490    |  50   |    48.66    |       0.0206       |
-| *Ours* |  **65.3**  | **2** |  **0.124**  |      **8.05**      |
-
-The SD 2.1 proxy reconstructs the SODiff architecture without its weights; it is not measured SODiff restoration latency. The original proxy configuration and raw repetitions are not archived. No measured SODiff speedup is claimed. See [evaluation provenance and runnable protocols](evaluation.md) and the [revised IEEE paper](roedunet-24-oct.pdf).
-
-The [JVP audit](src/audit_jvp.py) and [archived results](artifacts/roedunet-24-oct) compare actual outputs, tangents, losses, and parameter gradients on the trained checkpoint. The new CPU checks do not establish historical GPU memory reductions.
-
-> *Note:* Pretrained large-scale t2i diffusion models remain stronger under extreme compression, due to their texture & patterns knowledge. This model is optimized for low latency, edge environments where high throughput is critical.
+The independent [JVP audit](src/audit_jvp.py) and [CPU records](artifacts/roedunet-24-oct/jvp_trained_cpu.json) compare outputs, tangents, losses, and parameter gradients on the trained checkpoint. These bounded CPU checks do not establish historical GPU memory reductions.
 
 ## 📜 Citation
 

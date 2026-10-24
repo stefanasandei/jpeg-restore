@@ -1,207 +1,160 @@
-# Evaluation
+# Reproducing the evaluation
 
-*Quality metrics and performance benchmarks for JPEG restoration, with a shared model interface.*
+Paper PDFs, manuscript sources, tests, experiment logs, and hidden directories are local-only and excluded from Git. The public release contains evaluation code, protocol documentation, and the evidence archive.
 
-## Setup
+The revised comparison uses one evaluation harness and trained checkpoints for **FBCNN, JDEC, PromptCIR, and MeanFlow (one or two updates)**, plus the JPEG input. The governing preset is [`config/evaluation_matched.yaml`](config/evaluation_matched.yaml). Quality and latency use the same checkpoints, precision policy, tile grid, and reconstruction procedure. Published scores, architecture proxies, and historical ensemble timings are excluded from this comparison.
 
-Install the project dependencies with `pip install -r requirements.txt`. Configure dataset paths in `config/evaluation.yaml`: LIVE-1, Urban100, and **DIV2K-val**. The existing `df2k_val` group is a separate, combined validation pool.
+The complete run is being collected in `artifacts/matched-24-oct/run`. Until `validation.json` records a successful complete validation, partial files are progress records, not final paper results. The run comprises 4,122 image/model/QF cases and 12 timing configurations. Historical summary transcriptions under `artifacts/roedunet-24-oct` are superseded for baseline comparisons; the separate CPU JVP audit there remains valid within its documented scope.
 
-MeanFlow uses the [published checkpoint](https://huggingface.co/asandeistefan/jpeg-restore-meanflows). RF requires its own trained checkpoint. Perceptual metrics also require pretrained weights; CLIPIQA uses the existing local CLIP cache by default. Populate it with `hf download openai/clip-vit-base-patch16`, or set `eval.metric_options.clipiqa.local_files_only=false` to allow downloading.
+## Run on a GPU
 
-## 1. Quality metrics
-
-Run full-image evaluation for both MeanFlow schedules:
+Use the project dependencies in `requirements.txt`, a CUDA-enabled PyTorch installation, Git, `curl`, `gdown`, the Hugging Face `hf` CLI, a C++20 compiler, and libjpeg development headers. Run from the repository root:
 
 ```bash
-python3 src/eval.py \
-  'eval.models=[jpeg,meanflow_1,meanflow_2]' \
-  eval.checkpoints.meanflow=/path/to/model.pt \
+python scripts/prepare_matched_eval.py
+bash scripts/run_matched_eval.sh outputs/matched-reproduction \
   'dataset.live1=[/path/to/LIVE1]' \
-  'eval.datasets=[live1]'
+  'dataset.urban100=[/path/to/Urban100]' \
+  'dataset.div2k_val=[/path/to/DIV2K_valid_HR]'
 ```
 
-The default protocol evaluates each dataset separately at **QF 5, 10, and 20**, using decoded RGB in [0, 1], without resizing, tiling, border shaving, or 8-bit output rounding before scoring. JPEG inputs use the same OpenCV codec as training. JDEC receives coefficients from those exact JPEG bytes. The synthesis QF is never passed to a restoration network.
+Preparation checks out the official source revisions, downloads the trained weights and pinned CLIP assets, installs JDEC's two extra Python dependencies in `checkpoints/matched/python-deps`, and builds its official coefficient reader locally. It checks downloaded checkpoint/CLIP bytes against the archived SHA-256 values. A rebuilt native library has a platform-dependent binary hash; its source revision and build settings identify the implementation. Do not use an unrelated checkpoint bearing the same filename.
 
-Available metrics: **PSNR, SSIM, LPIPS, DISTS, MUSIQ, MANIQA, CLIPIQA**. Scores are averaged over images, with population standard deviations. LPIPS and DISTS are lower-is-better; the others are higher-is-better. CLIPIQA retains this repo's CLIP model and prompt pairs; the model name and metric options are saved with each run.
+Use a fresh output directory. Dataset paths may change: image content, dataset name, QF, and the base seed determine the sampling seed. Before comparing a reproduction, compare its image and encoded-JPEG hashes with the archived cohort. Different codec builds can produce different JPEG bytes even at the same QF.
 
-Use `'eval.metrics=[psnr,ssim]'` for a lightweight run, `eval.max_images=10` for a smoke test, and `eval.save_images=true` to save predictions. Add `'eval.quality_factors=[1,5,10,20,50]'` to change compression levels. Seeds are fixed per image and QF, independent of model selection and iteration order. Models without trained weights are rejected by the quality pipeline.
+Preparation also verifies the recorded TorchMetrics package weights and populates isolated metric caches with the archived AlexNet, VGG16, MUSIQ, MANIQA, and pinned timm ViT weights. `run_matched_eval.sh` selects those caches and sets `HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1`. Its preparation log distinguishes local copies from downloads. The published run uses these isolated caches. Public path placeholders identify their roles without disclosing local account paths. `metric-cache-preparation.json` records the verified local copies that populated them; the preparation and asset records distinguish those copies from fresh downloads. Do not run another GPU workload while collecting latency.
 
-Input selection uses every supported image file in the configured directories/globs, sorted and deduplicated; `eval.max_images` explicitly limits that list. Training uses the directories listed for both complete LSDIR shards in `config/rf_pretrain.yaml`. Evaluation image paths are recorded in each manifest, and per-image reports retain seeds and failures. The default DIV2K-val path is a placeholder and must point to the actual DIV2K validation split, not the combined DF2K validation directory.
+For a short functionality check, use `eval.max_images=1` and fewer timing repetitions. Such a run is deliberately rejected by the publication validator and cannot supply paper tables. The runner writes results before validation, so a failed validation retains diagnostic evidence.
 
-The current quality harness derives each seed from the configured base seed, dataset name, **absolute image path**, and QF. It is stable across model ordering on the same paths; relocating datasets changes seeds. Thus `eval.seed=0` specifies a base seed and does not mean every image receives literal seed zero, nor does it guarantee regeneration of historical predictions. Retain the original path mapping and per-image seed records when auditing a run.
+## Shared input and restoration protocol
 
-## 2. Performance
+| Setting | Value |
+| --- | --- |
+| Evaluation images | LIVE-1: 29; Urban100: 100; DIV2K validation: 100 (`0801.png`–`0900.png`) |
+| Image selection | All supported files in the configured directories/globs, sorted and deduplicated; no subset limit |
+| Compression | QF 5, 10, 20; one OpenCV JPEG encode per image/QF |
+| Colour and range | Pillow reference conversion to RGB; RGB→BGR for OpenCV encode; BGR→RGB after decode; float tensors in [0,1] |
+| Shape preparation | Reflect-101 padding on the bottom/right to multiples of 32 **before** JPEG encoding |
+| Inference grid | 224×224 tiles, nominal overlap 32, stride 192; final tile anchored to each image boundary |
+| Reconstruction | Clip each tile prediction to [0,1] before equal-weight FP32 accumulation and division |
+| Scoring region | Entire original reference dimensions; remove added padding only; no resize or border shaving |
+| Prediction conversion | Clamp restored RGB to [0,1]; no 8-bit rounding before metrics |
+| Randomness | Base seed 0; stable content-based per-image/QF seed; tile seed `(case_seed + tile_index) mod 2^32` |
+| Precision | FP32 weights and tensors; TF32 enabled for both CUDA matrix multiplication and cuDNN, consistently for every model and metric |
+| Execution | Batch one, eager inference, four PyTorch CPU threads, one RTX 3090 |
 
-Measure complete MeanFlow restoration, including Haar encoding, sampling, and decoding:
+The 224-pixel tile size accommodates JDEC's seven-token Swin windows and the models' spatial divisibility constraints. Padding to 32 ensures that tile origins also align with JPEG blocks/chroma samples. A final boundary tile may overlap more than 32 pixels. All compared restorers use this same grid; this is a comparison of these specified operating points.
+
+RGB models consume the decoded shared JPEG. JDEC extracts coefficients and quantization tables from **the same encoded bitstream**, then selects coefficient regions matching the common pixel tiles. Tiles are never recompressed independently. The synthesis QF is not supplied as an oracle conditioning value to any network. PromptCIR uses one released checkpoint (`model_best.pth`), without a second checkpoint, transpose ensemble, or self-ensemble. MeanFlow uses its released weights with one or two updates per tile.
+
+The case seed is the little-endian integer represented by the first four bytes of SHA-256 over UTF-8 `base_seed/dataset/image_sha256/qf`. Tile traversal is row-major. This rule survives dataset relocation and model reordering. CUDA deterministic algorithms are not forced; recorded seeds do not imply bitwise agreement across different software/hardware stacks.
+
+The local directory named `DF2K_valid_HR` contains precisely the 100 DIV2K validation images above; its name alone is not the split definition. The image list and hashes identify the actual evaluation cohort. Training uses all images from the first two LSDIR shards (`shard-00`, `shard-01`) alongside DF2K training. Illustrative LSDIR crops are excluded from the quantitative benchmark, and illustrative status does not establish independence from training.
+
+## Metrics
+
+Every restored image is scored by the same metric objects and options. The raw reports retain all seven metrics; the paper's perceptual comparison reports LPIPS, DISTS, MUSIQ, MANIQA, and CLIPIQA. Dataset/QF summaries are unweighted means over images, with population standard deviations. They are not averages of independent generation seeds or confidence intervals.
+
+| Metric | Implementation and input convention |
+| --- | --- |
+| PSNR | TorchMetrics functional RGB PSNR, `data_range=1.0` |
+| SSIM | TorchMetrics functional RGB SSIM, `data_range=1.0`, library defaults |
+| LPIPS ↓ | TorchMetrics, AlexNet, `normalize=True` for [0,1] inputs |
+| DISTS ↓ | TorchMetrics `DeepImageStructureAndTextureSimilarity` |
+| MUSIQ ↑ | PyIQA `musiq`, KonIQ weights; 32-pixel patches, scales with longer sides 224/384 plus original resolution |
+| MANIQA ↑ | PyIQA `maniqa`, KonIQ weights, scale 0.8; 20 uniform 224×224 evaluation crops |
+| CLIPIQA ↑ | This repository's fixed CLIP ViT-B/16 prompt-pair score; pinned model, tokenizer, and image processor |
+
+CLIPIQA averages the positive softmax probability within each pair: `Good image` / `bad image`; `Sharp image` / `blurry image`; `sharp edges` / `blurry edges`; `High resolution image` / `low resolution image`; `Noise-free image` / `noisy image`. The CLIP processor's resizing/cropping is part of this metric, applied identically to every method; restoration images themselves are not resized. This specific prompt/model implementation defines the reported score. Stateful TorchMetrics objects are reset before and after each image.
+
+## System timing and NFE
+
+Both 512×512 and 1024×1024 are measured at batch one on a seeded synthetic QF10 JPEG. Each model has five warm-up calls and 20 measured calls, with CUDA synchronization before and after each measured call. The timing boundary is **a cached JPEG file to a restored RGB tensor** for every method.
+
+Included: reading the cached file, RGB decoding or JDEC coefficient extraction, host/device transfers, model preparation within the restoration path, all tile calls, overlap blending, and MeanFlow Haar transforms/sampling/decoding. Excluded: creating/staging the source JPEG, loading checkpoints, warm-up, metrics, writing predictions, and worker IPC. Filesystem caching is warm; this is not cold-storage I/O latency. Tile finite/shape checks and clipping are inside the common reconstruction path; final full-image output validation runs outside the timed interval. Performance is collected before loading metric networks.
+
+The raw `results.json` report contains all 20 wall-clock samples, arithmetic mean, median, population standard deviation, p95 (`numpy.percentile`), and throughput `1000 / mean_ms` at batch one. GPU peak allocated/reserved memory is recorded after resetting peak statistics following warm-up; allocated peaks include resident model/input storage. No optimizer or metric model is included in the performance measurement.
+
+NFE counts **actual network calls over all tiles**, rather than just restoration updates. There are nine tiles at 512² and 36 at 1024²: FBCNN, JDEC, PromptCIR, and one-update MeanFlow therefore use 9/36 calls; two-update MeanFlow uses 18/72. JPEG has zero network calls. The one-/two-update names describe each tile's sampling schedule.
+
+## Asset and run provenance
+
+[`assets.json`](artifacts/matched-24-oct/assets.json) records full SHA-256 hashes, byte sizes, source URLs, pinned Hub revisions/ETags where available, local file modification times, and acquisition evidence for checkpoints, metric weights, tokenizer/processor files, JDEC's coefficient-reader source/binary, and libjpeg. `download_verification.json` records independently repeated official downloads with explicit UTC start/completion times and matching hashes.
+
+Dates have distinct meanings. A Hub download metadata timestamp identifies that local download completion. A local modification time may have been preserved from a server and is **not** a download timestamp. Unknown original acquisition times remain `null`; a later verification download is labeled separately. Package resources and existing caches retain their observed identities without invented acquisition dates. Download dates are provenance; the cryptographic hash identifies the bytes actually used.
+
+Pinned baseline implementations:
+
+| Source | Git revision |
+| --- | --- |
+| [FBCNN](https://github.com/jiaxi-jiang/FBCNN) | `54d1831927506b3247e2d4d245abb4f4dab1a1cd` |
+| [JDEC](https://github.com/WooKyoungHan/JDEC) | `e9fe8354754dd062dbf1defebb220e290507edd2` |
+| [PromptCIR](https://github.com/lbc12345/PromptCIR-NTIRE24) | `3506b1aa0e6588fdf4e0b8345d90679adf1e2220` |
+
+MeanFlow weights: Hub revision `33315831b6b342d3b8ddbdc70aa11cb84e55c66b`; SHA-256 `fbb573706c64ae90da85e47d1ff3377734264142460770c54ebadc50a4ba4caa`. CLIP revision: `57c216476eefef5ab752ec549e440a49ae4ae5f3`. Every remaining full asset hash is in the linked manifest, rather than abbreviated in this guide.
+
+JDEC's released checkpoint names its encoder `swinv2_rgb_nomore_deepir_rgbver`; the adapter maps that legacy name to the official `swinv2_group_embedded` factory used by its released training configuration. Encoder arguments and weights remain unchanged, with strict state-dictionary loading. Worker namespace isolation accommodates the upstream repos' module layout. The coefficient extension uses the pinned official `dct_manip.cpp`, `-O1 -std=c++20`, and `-ljpeg`; compiler and linked-library identity belong to the recorded build environment.
+
+The public evidence export normalizes personal/workspace/dataset path prefixes and limits installed-package inventory to evaluation dependencies. Numeric results, input/checkpoint/source hashes, seeds, and raw timing samples are preserved; full original records stay locally under ignored `outputs/`. `scripts/export_matched_evidence.py` validates both copies and records the transformations and original file hashes.
+
+The run manifest records the resolved configuration, source-file SHA-256 hashes, repository revisions, checkpoint hashes, input paths, model parameter counts, weight dtypes, worker environments, CPU thread count, TF32 flags, GPU, driver, CUDA/cuDNN, Python, and installed package versions. OpenCV and PyTorch build reports are archived separately. `system-and-upstream.json` records CPU/compiler/library details, tracked upstream checkout status, and hashes of upstream implementation files; `requirements-recorded.txt` lists the principal installed dependency versions. The measured stack is Python 3.14.4, PyTorch 2.13.0, TorchMetrics 1.8.2, PyIQA 0.1.16, Transformers 5.5.3, CUDA 13.0, and NVIDIA driver 595.71.05. Full records govern over this abbreviated list.
+
+| File in the run directory | Contents |
+| --- | --- |
+| `manifest.json` | Configuration, source/environment/checkpoint identity, dataset lists |
+| `per_image.jsonl`, `per_image.csv` | Every image/model/QF score, content/JPEG hashes, seed, original/encoded dimensions, actual NFE, UTC start/end times, status |
+| `quality.csv` | Dataset/QF means, standard deviations, successful/expected counts |
+| `performance.csv`, `results.json` | Timings, raw repetitions, memory, NFE, parameter counts, timing boundary; combined summaries |
+| `errors.csv` | Explicit failures; no replacement with historical results |
+| `progress.jsonl` | Append-only per-image progress while the run is active |
+| `validation.json` | Successful complete-run protocol/cohort validation, generated only after checks pass |
+
+Validate a completed run with:
 
 ```bash
-python3 src/eval.py \
-  eval.mode=performance 'eval.models=[meanflow_1,meanflow_2]' \
-  eval.checkpoints.meanflow=/path/to/model.pt eval.dtype=bfloat16 \
-  'eval.performance.sizes=[[720,1280],[1024,1024]]' \
-  'eval.performance.batch_sizes=[1,4]'
+python scripts/validate_matched_run.py outputs/matched-reproduction
 ```
 
-The pipeline uses seeded synthetic JPEG inputs, five warm-up calls, and 20 measured calls per shape and batch size. CUDA is synchronized around each call. Reports include mean, median, p95 and standard deviation of **batch latency**, images/s, parameter count, NFE, and peak allocated/reserved CUDA memory. Raw timings are also saved. CPU memory columns are empty.
+The validator rejects failed/partial cohorts, subset runs, missing trained-weight identities, inconsistent precision/worker settings, different tiling, mismatched image/JPEG hashes or seeds, and incomplete timing samples. It requires the same cohort for every model. The checks also require the exact official checkpoint hashes and pinned baseline revisions, recompute quality means/standard deviations and timing means/throughput, and verify that CSV views agree with the raw JSON records. A successful run does not establish superiority beyond the tested models, datasets, QFs, and inference settings.
 
-Model loading, compilation warm-up, JPEG synthesis, metric computation, disk output, and worker communication are excluded. Model-specific coefficient parsing, conditioning, VAE encoding/decoding, and sampling remain inside the restoration call. RGB input transfers are staged before timing where the adapter supports it; DiffBIR's official host-array pipeline includes its transfers. Each report records this timing scope and the model's weight dtypes. The `jpeg` entry measures an identity operation on an already decoded input.
+## Figures and independent architecture measurements
 
-Set `eval.performance.warmup=10`, `eval.performance.iterations=50`, or `eval.model_specs.meanflow_2.compile=true` as needed. `eval.mode=both` runs performance before loading the quality metrics, so metric networks do not inflate measured memory.
-
-For a controlled, eager, two-level Haar backbone sweep following the paper's protocol:
+Render the quality/throughput figure directly from a validated matched run:
 
 ```bash
-python3 src/benchmark.py
-# Equivalent: python3 src/eval.py --config-name evaluation_backbones
+python src/evaluation/plots.py pareto \
+  --quality outputs/matched-reproduction \
+  --performance outputs/matched-reproduction \
+  --dataset live1 --qf 10 --size 1024 \
+  --output outputs/matched-reproduction/figures
 ```
 
-This compares Restormer, SANA Linear DiT, RELA DiT, and full-attention DiT in BF16, batch size 1, at square resolutions from 64 to 1440. `adm_backbone` is also available. These entries use random initialization and report `scope=backbone`, separately from trained restoration systems. Parameter counts reflect the current local implementations. Shapes are always **[height, width]**; 720×720 differs from 720p. Both entry points use Hydra options.
+The x-axis measures 1024² deployment throughput; the y-axis averages LIVE-1 QF10 scores, whose images have their original sizes. Both axes use the same model operating configuration. The plotted frontier applies only to these measured settings.
 
-## 3. Other models
-
-Install each official implementation and its dependencies in a compatible environment. Workers need Python 3.10+, PyTorch 2+, NumPy, Pillow, OpenCV, pandas, and OmegaConf. Set `repo`, `python` (optional interpreter path), and the checkpoint/config fields under `eval.model_specs.<name>`.
-
-| Model     | Official code                                              | Required settings                                                        |
-| --------- | ---------------------------------------------------------- | ------------------------------------------------------------------------ |
-| FBCNN     | [FBCNN](https://github.com/jiaxi-jiang/FBCNN)              | `repo`, `checkpoint` for the official color model                        |
-| JDEC      | [JDEC](https://github.com/WooKyoungHan/JDEC)               | `repo`, `checkpoint`, compiled `dct_manip`; CUDA, batch size 1           |
-| PromptCIR | [PromptCIR](https://github.com/lbc12345/PromptCIR-NTIRE24) | `repo`, `checkpoint`; single-model, full-image inference                 |
-| DiffBIR   | [DiffBIR](https://github.com/XPixelGroup/DiffBIR)          | `repo`, JPEG-trained `checkpoint`, training `config`; CUDA               |
-| SUPIR     | [SUPIR](https://github.com/Fanghua-Yu/SUPIR)               | `repo`, official `config` pointing to local SDXL and SUPIR weights; CUDA |
-
-For example:
+The paper's separately identified BF16, full-image, one-forward-pass backbone scaling experiment isolates architecture cost. It is not the FP32 tiled restoration comparison above. To collect a new architecture sweep and render its plots:
 
 ```bash
-python3 src/eval.py 'eval.models=[fbcnn]' \
-  eval.model_specs.fbcnn.repo=/path/to/FBCNN \
-  eval.model_specs.fbcnn.checkpoint=/path/to/fbcnn_color.pth \
-  eval.model_specs.fbcnn.python=/path/to/environment/bin/python
+python src/benchmark.py eval.device=cuda eval.dtype=bfloat16 \
+  eval.performance.warmup=5 eval.performance.iterations=20 \
+  eval.seed=0 eval.output_dir=outputs/backbones
+python src/evaluation/plots.py scaling \
+  --performance outputs/backbones --output outputs/backbones/figures
 ```
 
-Each worker loads its model once and handles both pipelines. Upstream module names stay isolated. JDEC retains its JPEG-coefficient input path. PromptCIR uses one full-image forward pass, with padding removed afterward; its challenge release's tiled, two-checkpoint ensemble is a different protocol.
+Optional DiffBIR, SUPIR, and Rectified Flow adapters remain available in the general evaluation presets. They require their own trained weights and configurations and do not enter the matched paper comparison. There is no trained SODiff adapter/checkpoint evaluation in this repository.
 
-DiffBIR defaults to `version=custom` for the paper's **DiffBIR*** retraining. Set `version=v2.1` to evaluate the upstream generic model, which may download its own weights. SUPIR uses a fixed empty caption and full-image inference with padding; `prompt` and `sampling` options are configurable. These choices are recorded and should be matched before comparing against published tables. Upstream shape or memory failures are reported explicitly.
+## Segmented-JVP verification
 
-`evaluation_paper.yaml` selects the currently supported comparison adapters and six flow configurations. It does not reproduce every historical paper operating point. Set the checkpoint and baseline paths before running it:
+The independent [`src/audit_jvp.py`](src/audit_jvp.py) audit compares the actual monolithic and segmented paths in fresh subprocesses, with identical weights, inputs/noise, and fixed `(r,t)=(0.2,0.7)`. It compares primal outputs, tangents, scalar adaptive MeanFlow-plus-severity loss, every named parameter gradient, and missing-gradient patterns. LPIPS is excluded.
 
-```bash
-python3 src/eval.py --config-name evaluation_paper
-```
-
-RF entries are `rf_euler_20`, `rf_euler_50`, `rf_heun_20`, and `rf_heun_50`, sharing `eval.checkpoints.rectified_flow`. Heun uses two network evaluations per integration step. DiffBIR and SUPIR count actual denoiser calls. SODiff is not implemented: its paper quality scores are external references, and the original SD 2.1 architectural timing proxy is not a SODiff checkpoint evaluation.
-
-## Paper tables and plots
-
-Run from the repository root, after setting dataset paths, `eval.checkpoints`, and the baseline settings in `config/evaluation.yaml`. The commands below each run one experiment or render its plots. Choose fresh output directories for repeat runs.
-
-The paper combines original local measurements, explicitly attributed external quality scores, and a separately labeled architectural timing proxy. The CSVs in [`artifacts/roedunet-24-oct`](artifacts/roedunet-24-oct) are transcriptions of the reported summaries, **not raw logs or fresh measurements**.
-
-| Paper result | Origin | What the current commands reproduce |
-| --- | --- | --- |
-| Ours, FBCNN, JDEC, PromptCIR, DiffBIR*, SUPIR quality | Original local evaluations, as confirmed by the author | New measurements with the specified checkpoints and current adapters; historical checkpoints/configurations are not all archived |
-| SODiff quality | Published SODiff paper, https://arxiv.org/abs/2508.07346 | No local SODiff quality evaluation; no SODiff checkpoint was evaluated |
-| Ours, FBCNN, JDEC, SUPIR system timings | Original local RTX 3090 measurements | Fresh timings with current adapters; historical raw repetitions are not included |
-| PromptCIR system timing | Original local tiled, two-checkpoint/transpose ensemble | The current adapter measures a different full-image, single-checkpoint path; it does not reproduce the historical 64-call row |
-| SD 2.1 proxy timing | Local SD 2.1 reconstruction following the SODiff architecture, without SODiff weights | Original proxy script/configuration and raw repetitions are not archived; this is not validated SODiff latency |
-| Backbone scaling | Original local forward-only measurements | A new sweep of current local implementations, whose parameter counts can differ from the historical models |
-| Table IV: JVP agreement | New CPU FP32 audit of the trained checkpoint, three seeds, batch 1, 32×32 synthetic RGB | Runnable with `src/audit_jvp.py`; reports and checkpoint hash are archived below |
-
-Accordingly, the paper does not claim a measured SODiff speedup, a fully matched quality-throughput frontier, or exact reproduction of all historical tables from the current presets. The first two LSDIR shards (`shard-00`, `shard-01`) are used in full for the 10,000-image training subset, alongside DF2K. The qualitative LSDIR examples are illustrative and are not part of LIVE-1, Urban100, or DIV2K-val quality aggregation; their independence from training is not established by their illustrative status.
-
-The following commands generate **new run reports**. Do not substitute historical table cells for unavailable measurements, and do not present a new adapter's result as the historical operating point.
-
-**Quality measurements corresponding to Table I** (`tab:quality`): LIVE-1, Urban100, and DIV2K-val, QF 5/10/20. This command does not generate the externally sourced SODiff row or guarantee the historical baseline configurations.
+The archived [`jvp_trained_cpu.json`](artifacts/roedunet-24-oct/jvp_trained_cpu.json) uses the full trained 65,323,201-parameter checkpoint, CPU FP32, batch one, 32×32 synthetic RGB, and seeds 0/1/2. All recorded differences are zero, with nonzero reference gradients for more than 59 million parameter elements in each case. Checkpoint/script hashes are included; `rtol=1e-4`, `atol=1e-6` are acceptance tolerances, not the observed errors. This verifies those cases, not every input, precision, auxiliary loss, or hardware configuration.
 
 ```bash
-python3 src/eval.py eval.mode=quality 'eval.models=[jpeg,meanflow_1,meanflow_2,fbcnn,jdec,promptcir,diffbir,supir]' 'eval.datasets=[live1,urban100,div2k_val]' 'eval.quality_factors=[5,10,20]' 'eval.metrics=[lpips,dists,musiq,maniqa,clipiqa]' eval.device=cuda eval.dtype=float32 eval.seed=0 eval.output_dir=outputs/paper/quality
-```
-
-**Optional sampler extension** (not a table in the current five-page paper): both MeanFlow schedules and Euler/Heun at 20/50 integration steps, on LIVE-1.
-
-```bash
-python3 src/eval.py eval.mode=quality 'eval.models=[meanflow_1,meanflow_2,rf_euler_20,rf_euler_50,rf_heun_20,rf_heun_50]' 'eval.datasets=[live1]' 'eval.quality_factors=[5,10,20]' 'eval.metrics=[lpips,dists,musiq,maniqa,clipiqa]' eval.device=cuda eval.dtype=float32 eval.seed=0 eval.output_dir=outputs/paper/samplers
-```
-
-**New system measurements corresponding to Table III** (`tab:system_efficiency`): complete restoration at 1024×1024, batch size 1. The full-image PromptCIR result differs from the historical ensemble; neither SODiff nor the original SD 2.1 proxy is run. This command additionally measures DiffBIR and one-step MeanFlow.
-
-```bash
-python3 src/eval.py eval.mode=performance 'eval.models=[fbcnn,jdec,promptcir,diffbir,supir,meanflow_1,meanflow_2]' 'eval.performance.sizes=[[1024,1024]]' 'eval.performance.batch_sizes=[1]' eval.performance.warmup=5 eval.performance.iterations=20 eval.device=cuda eval.dtype=bfloat16 eval.seed=0 eval.output_dir=outputs/paper/systems
-```
-
-**Backbone scaling table** (`tab:backbone_raw`): the four architectures, eight square resolutions, BF16, batch size 1, without compilation.
-
-```bash
-python3 src/benchmark.py eval.device=cuda eval.dtype=bfloat16 eval.performance.warmup=5 eval.performance.iterations=20 eval.seed=0 eval.output_dir=outputs/paper/backbones
-```
-
-New quality and optional sampler results are in each run's `quality.csv`. System and backbone results are in `performance.csv`; latency is recorded in milliseconds, so divide by 1000 for the paper's seconds column. Compilation remains disabled in these presets.
-
-**Throughput and memory scaling plots** (`fig:backbone_scaling`): render both plots from the backbone sweep.
-
-```bash
-python3 src/evaluation/plots.py scaling --performance outputs/paper/backbones --output outputs/paper/figures
-```
-
-This writes `throughput_vs_resolution.{png,pdf}` and `memory_vs_resolution.{png,pdf}`. Memory plotting requires CUDA readings.
-
-**Comparison plot from new runs:** combine LIVE-1 QF10 LPIPS with batch-one 1024×1024 system throughput. The plot marks non-dominated points among the paired reports, not a universal frontier. These example commands collect quality in FP32 and timing in BF16; they are distinct operating settings, not demonstrated equal-quality BF16 deployment. Set matching precision when collecting quality and speed for a single operating point. SODiff is absent.
-
-```bash
-python3 src/evaluation/plots.py pareto --quality outputs/paper/quality --performance outputs/paper/systems --dataset live1 --qf 10 --size 1024 --output outputs/paper/figures
-```
-
-This writes `pareto_quality_vs_throughput.{png,pdf}` and `pareto_points.csv`. Plotting rejects failed or partial reports and pairs models by name, excluding the JPEG identity benchmark.
-
-**Historical Figure 1:** render the separately archived summary cells with explicit provenance:
-
-```bash
-python3 scripts/render_paper_comparison.py
-```
-
-The hollow point combines SODiff's published LPIPS with the SD 2.1 proxy timing. It is illustrative and is not a checkpoint-level SODiff measurement. The renderer does not evaluate a model or generate new evidence.
-
-**Appendix predictions:** prepare the fixed 512×512 LSDIR crops first, then save JPEG, one-step, and two-step outputs at QF 5/10. Reference images remain in the input directory; panel selection and layout are manual.
-
-```bash
-python3 src/eval.py eval.mode=quality 'eval.models=[jpeg,meanflow_1,meanflow_2]' '+dataset.lsdir_figures=[/path/to/fixed_512_crops]' 'eval.datasets=[lsdir_figures]' 'eval.quality_factors=[5,10]' 'eval.metrics=[psnr,ssim]' eval.save_images=true eval.device=cuda eval.seed=0 eval.output_dir=outputs/paper/qualitative
-```
-
-## Segmented-JVP verification (Table IV)
-
-The audit runs the actual `MeanFlow` monolithic (`jvp`) and segmented (`rcm`) paths in fresh subprocesses, with identical model weights, synthetic inputs, noise, and fixed times `r=0.2`, `t=0.7`. It compares primal outputs, derivative tangents, scalar loss, every named parameter gradient, and the pattern of parameters without gradients. The loss includes adaptive MeanFlow and severity regression; **LPIPS is excluded**. Gradient agreement here does not establish agreement for an auxiliary LPIPS loss or every input/precision/hardware combination.
-
-The archived [`jvp_trained_cpu.json`](artifacts/roedunet-24-oct/jvp_trained_cpu.json) uses the full 65,323,201-parameter trained checkpoint, CPU FP32, batch 1, 32×32 synthetic RGB, and seeds 0/1/2. All recorded errors are zero, with nonzero reference gradients for more than 59 million parameter elements in each case. Checkpoint and audit-script SHA-256 hashes are recorded. Comparison tolerances are `rtol=1e-4`, `atol=1e-6`; zero errors are the observed values, not merely a pass at those tolerances. Local paths are replaced by basenames in the published reports.
-
-```bash
-python3 src/audit_jvp.py \
-  --checkpoint /path/to/rela_dit_meanflow_qf5_20.pt \
+python src/audit_jvp.py --checkpoint /path/to/rela_dit_meanflow_qf5_20.pt \
   --device cpu --dtype float32 --crop 32 --batch 1 --seeds 0 1 2 \
   --output outputs/jvp-trained-cpu.json
 ```
 
-A small nonzero-head architecture check is also archived as [`jvp_smoke_cpu.json`](artifacts/roedunet-24-oct/jvp_smoke_cpu.json). It tests the code paths and is not evidence about trained-model quality:
+The audit checkpoint is the full training checkpoint, rather than the inference-only export. For a fresh CUDA audit use `--device cuda --crop 128 --batch 32`; memory requirements may exceed the available GPU. Each method/seed uses a fresh process. Following its separate tangent comparison, the audit releases that graph, clears the CUDA cache, and resets peak statistics. Allocated/reserved peaks cover loss forward/backward, including resident model/input storage and parameter gradients; no optimizer/state/step is included. CPU GPU-memory fields are `null`.
 
-```bash
-python3 src/audit_jvp.py --smoke --crop 16 --batch 1 --seeds 0 1 2
-```
-
-For a fresh CUDA verification at the original training geometry:
-
-```bash
-python3 src/audit_jvp.py \
-  --checkpoint /path/to/rela_dit_meanflow_qf5_20.pt \
-  --device cuda --dtype float32 --crop 128 --batch 32 --seeds 0 1 2 \
-  --output outputs/jvp-trained-cuda.json
-```
-
-**Memory definition:** each method/seed uses a fresh process. Following the separate tangent comparison, the audit releases its graph, clears the CUDA cache, and resets peak statistics. Reported peaks are total allocated and reserved CUDA memory during the loss forward and backward; the allocated baseline includes resident model/input storage. Parameter-gradient storage is included. No optimizer is constructed, no optimizer state is allocated, and no optimizer step is timed. CPU runs report `null` for GPU memory. The single synchronized forward/backward duration is diagnostic, not a warmed throughput benchmark.
-
-CUDA was unavailable for the archived audit. The paper therefore withdraws the historical 15.75→6.16 GiB memory-reduction and associated speed comparison: their allocator/backward/optimizer boundaries were not retained. The new CPU agreement results do not validate those GPU peaks. CUDA OOM or unavailable-device errors must not be replaced by CPU or historical numbers.
-
-## Results and extensions
-
-Each run writes to `outputs/evaluation/<timestamp>/`: `quality.csv`, `per_image.csv`, `per_image.jsonl`, `performance.csv`, `results.json`, `errors.csv`, and `manifest.json`. The manifest records resolved settings, input paths, seeds, package versions, hardware, Git revisions, checkpoint hashes, and source fingerprints. Use `eval.output_dir=/path/to/run` for a fixed destination; existing results require `eval.overwrite=true`. `eval.hash_weights=false` disables file hashing.
-
-Failures remain in the reports and produce a nonzero exit status after the selected models finish. Partial quality rows include successful and expected image counts. Set `eval.continue_on_error=false` to stop at the first failure. Historical paper values are never substituted for measurements.
-
-Add metrics through `src/metrics/suite.py` and the `ImageMetric` interface. Add model presets in `config/evaluation.yaml`; new integrations implement `Adapter.prepare`, `restore`, and `parameter_count`. A custom preset can use `kind: custom` with `factory: package.module.callable`, returning an adapter from `(spec, device, dtype)`. The runner, timing code, and reports are shared in `src/evaluation/`.
+The archived audit was CPU-only. The historical 15.75→6.16 GiB memory and associated speed comparison are withdrawn because their accounting boundaries were not retained. CPU gradient agreement does not validate those GPU memory values.

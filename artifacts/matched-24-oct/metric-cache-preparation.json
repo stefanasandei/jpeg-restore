@@ -1,0 +1,34 @@
+[
+  {
+    "file": "checkpoints/matched/torch-cache/hub/checkpoints/alexnet-owt-7be5be79.pth",
+    "operation": "verified_local_copy",
+    "source_url": "https://download.pytorch.org/models/alexnet-owt-7be5be79.pth",
+    "sha256": "7be5be791159472b1fbf3c69796f7cb30dca7ad8466c2df70058c37116cdee02",
+    "started_utc": "2026-10-24T12:33:28.264692+00:00",
+    "completed_utc": "2026-10-24T12:33:28.704934+00:00"
+  },
+  {
+    "file": "checkpoints/matched/torch-cache/hub/checkpoints/vgg16-397923af.pth",
+    "operation": "verified_local_copy",
+    "source_url": "https://download.pytorch.org/models/vgg16-397923af.pth",
+    "sha256": "397923af8e79cdbb6a7127f12361acd7a2f83e06b05044ddf496e83de57a5bf0",
+    "started_utc": "2026-10-24T12:33:28.705051+00:00",
+    "completed_utc": "2026-10-24T12:33:29.590134+00:00"
+  },
+  {
+    "file": "checkpoints/matched/torch-cache/hub/pyiqa/musiq_koniq_ckpt-e95806b9.pth",
+    "operation": "verified_local_copy",
+    "source_url": "https://huggingface.co/chaofengc/IQA-PyTorch-Weights/resolve/0df2df423c65f6a64209309695f3845727431027/musiq_koniq_ckpt-e95806b9.pth",
+    "sha256": "e95806b9eae5f3814c410f574ba8e552362bd5bc63d758ed5b97860f5d6185aa",
+    "started_utc": "2026-10-24T12:33:29.590289+00:00",
+    "completed_utc": "2026-10-24T12:33:29.764785+00:00"
+  },
+  {
+    "file": "checkpoints/matched/torch-cache/hub/pyiqa/ckpt_koniq10k.pt",
+    "operation": "verified_local_copy",
+    "source_url": "https://huggingface.co/chaofengc/IQA-PyTorch-Weights/resolve/0df2df423c65f6a64209309695f3845727431027/ckpt_koniq10k.pt",
+    "sha256": "a207f8ab57322e6be38ff5c8d019301dc032b454bef21c3c9f9dbf7974eebff6",
+    "started_utc": "2026-10-24T12:33:29.764890+00:00",
+    "completed_utc": "2026-10-24T12:33:30.642744+00:00"
+  }
+]
