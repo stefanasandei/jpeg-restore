@@ -16,7 +16,7 @@ eval:
   metric_device: cuda
   seed: 0
   cpu_threads: 4
-  allow_tf32: false
+  allow_tf32: true
   quality_factors: [5, 10, 20]
   continue_on_error: true
   input_pad_multiple: 32
