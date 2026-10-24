@@ -56,9 +56,17 @@ See [evaluation.md](./evaluation.md) for the matched quality/performance protoco
 
 ## 📊 Benchmark Results
 
-The matched evaluation is collecting new results for FBCNN, JDEC, PromptCIR, and MeanFlow (one/two updates), plus JPEG. Every method uses the same image cohort and JPEG bitstreams, 224×224 tiles with shared overlap blending, FP32 tensors with TF32 acceleration, metric implementations, and cached-JPEG-to-RGB timing boundary. External paper scores and architectural timing proxies are excluded.
+<!-- MATCHED_RESULTS_START -->
+The full results table compares **FBCNN, JDEC, PromptCIR, and both MeanFlow schedules** on **LIVE-1, Urban100, and DIV2K validation at QF5/10/20**, with JPEG as a reference row. Every dataset contains the same compared methods; there is no separate model-versus-JPEG-only results table.
 
-See [the protocol and GPU command](evaluation.md), [asset identities](artifacts/matched-24-oct/assets.json), and [evidence archive](artifacts/matched-24-oct). Results remain provisional until the complete-run validator passes; a partial sweep is not a completed comparison.
+Complete the remaining measurements and build the final local IEEE PDF with:
+
+```bash
+bash scripts/finish_paper.sh
+```
+
+The build uses the local, ignored IEEE draft supplied in this workspace. The pipeline resumes verified cases, computes missing cases, validates all 4,122 image results and 12 timing configurations, exports portable evidence, and builds the complete paper. It refuses incomplete tables. Full measured numerical claims are written here only after successful validation. Use `PAPER_DRY_RUN=1 bash scripts/finish_paper.sh` to check the remaining work without using the GPU.
+<!-- MATCHED_RESULTS_END -->
 
 The independent [JVP audit](src/audit_jvp.py) and [CPU records](artifacts/roedunet-24-oct/jvp_trained_cpu.json) compare outputs, tangents, losses, and parameter gradients on the trained checkpoint. These bounded CPU checks do not establish historical GPU memory reductions.
 

@@ -15,7 +15,9 @@ tests
 poster
 paper
 manuscript
-roedunet-*.pdf
+roedunet*.pdf
+/artifacts/**/figures/*.tex
+/artifacts/**/run.log
 
 # Any hidden directory, at any depth (hidden files remain eligible)
 .*/

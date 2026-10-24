@@ -4,7 +4,24 @@ Paper PDFs, manuscript sources, tests, experiment logs, and hidden directories a
 
 The revised comparison uses one evaluation harness and trained checkpoints for **FBCNN, JDEC, PromptCIR, and MeanFlow (one or two updates)**, plus the JPEG input. The governing preset is [`config/evaluation_matched.yaml`](config/evaluation_matched.yaml). Quality and latency use the same checkpoints, precision policy, tile grid, and reconstruction procedure. Published scores, architecture proxies, and historical ensemble timings are excluded from this comparison.
 
-The complete run is being collected in `artifacts/matched-24-oct/run`. Until `validation.json` records a successful complete validation, partial files are progress records, not final paper results. The run comprises 4,122 image/model/QF cases and 12 timing configurations. Historical summary transcriptions under `artifacts/roedunet-24-oct` are superseded for baseline comparisons; the separate CPU JVP audit there remains valid within its documented scope.
+The final full results will be exported to `artifacts/matched-24-oct/run` only after complete validation. Existing local partial records remain under ignored `outputs/` and are reused only after source, checkpoint, metric/native asset, environment, image/JPEG, and seed checks. Historical transcriptions under `artifacts/roedunet-24-oct` do not fill any final comparison cell.
+
+## Finish the complete paper
+
+Run outside the sandbox on the same RTX 3090 workstation:
+
+```bash
+cd /path/to/jpeg-restore
+bash scripts/finish_paper.sh
+```
+
+The checked cache currently contains **1,887 of 4,122 image cases** and **eight of 12 timing configurations**. The command measures the remaining cases using the existing evaluator, recomputes all aggregates from individual images, validates the full 29/100/100 image cohorts for every method/QF, renders the original three-dataset comparison structure, and builds `roedunet-24-oct.pdf` locally. It produces no JPEG-only comparison table and never substitutes published or historical summaries.
+
+The final source template is local-only at `manuscript/full-template.tex`; the authoritative build directory is `../roedunet`. The pipeline checks the IEEE page limit, references, page-one links, and the presence of every reported quality value before replacing the PDF. All paper files remain excluded from Git. The superseded narrowed PDF is retained locally as `roedunet-24-oct-superseded.pdf`.
+
+Use `PAPER_DRY_RUN=1 bash scripts/finish_paper.sh` for a read-only preflight. The launcher prevents concurrent instances. If interrupted, rerun the same command: completed per-image results are retained, and child GPU processes are stopped on cancellation. Logs and raw source-run lineage stay in `outputs/matched-completion/`. Only compatible measured cases are combined; cohort summaries are always recomputed over the full image lists, rather than averaging subset summaries.
+
+The final comparison includes the three trained baselines with pinned checkpoints and executable adapters. DiffBIR*, SUPIR, and SODiff are not filled from their papers or from architectural proxies. The manuscript bounds its claims to the actually measured trained methods.
 
 ## Run on a GPU
 
@@ -96,6 +113,8 @@ MeanFlow weights: Hub revision `33315831b6b342d3b8ddbdc70aa11cb84e55c66b`; SHA-2
 JDEC's released checkpoint names its encoder `swinv2_rgb_nomore_deepir_rgbver`; the adapter maps that legacy name to the official `swinv2_group_embedded` factory used by its released training configuration. Encoder arguments and weights remain unchanged, with strict state-dictionary loading. Worker namespace isolation accommodates the upstream repos' module layout. The coefficient extension uses the pinned official `dct_manip.cpp`, `-O1 -std=c++20`, and `-ljpeg`; compiler and linked-library identity belong to the recorded build environment.
 
 The public evidence export normalizes personal/workspace/dataset path prefixes and limits installed-package inventory to evaluation dependencies. Numeric results, input/checkpoint/source hashes, seeds, and raw timing samples are preserved; full original records stay locally under ignored `outputs/`. `scripts/export_matched_evidence.py` validates both copies and records the transformations and original file hashes.
+
+The full aggregate manifest also identifies the source run of every reused/measured case and the SHA-256 of each original run manifest.
 
 The run manifest records the resolved configuration, source-file SHA-256 hashes, repository revisions, checkpoint hashes, input paths, model parameter counts, weight dtypes, worker environments, CPU thread count, TF32 flags, GPU, driver, CUDA/cuDNN, Python, and installed package versions. OpenCV and PyTorch build reports are archived separately. `system-and-upstream.json` records CPU/compiler/library details, tracked upstream checkout status, and hashes of upstream implementation files; `requirements-recorded.txt` lists the principal installed dependency versions. The measured stack is Python 3.14.4, PyTorch 2.13.0, TorchMetrics 1.8.2, PyIQA 0.1.16, Transformers 5.5.3, CUDA 13.0, and NVIDIA driver 595.71.05. Full records govern over this abbreviated list.
 

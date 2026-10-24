@@ -30,3 +30,9 @@ All timestamps use UTC. Modification time, original acquisition time, first obse
 Hashes identify this evidence; they do not imply that downloads or historical experiments occurred at an unrecorded time. The recorded package environment contains the actual measured versions, rather than a promise that every future dependency combination reproduces identical floating-point results.
 
 Public records use portable path placeholders and retain only evaluation dependency versions. The export preserves numerical results, cryptographic identities, seeds, and all timing samples; original local records remain under ignored `outputs/`. Its transformation record identifies the normalization explicitly.
+
+## Complete comparison and local paper build
+
+`bash scripts/finish_paper.sh` completes the full six-configuration, three-dataset, three-QF table and the matched 512²/1024² timings. It reuses compatible per-image records and measures all missing cases. The final `run/` is exported only after all 4,122 cases and 12 timing configurations pass validation; partial subsets do not supply final paper cells. Every dataset table includes FBCNN, JDEC, PromptCIR and both MeanFlow schedules, plus the JPEG reference. No model-versus-JPEG-only results table is emitted.
+
+Raw originals and run logs remain under ignored `outputs/matched-completion/`. Public paths are normalized and installed-package inventories are limited to evaluation dependencies. `scripts/finalize_manuscript.py` refuses incomplete evidence, empty numeric cells, missing reported values, broken resource links, unresolved references, or a manuscript exceeding five pages. The PDF and manuscript remain local-only.

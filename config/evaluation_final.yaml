@@ -1,0 +1,6 @@
+defaults:
+  - evaluation_matched
+  - _self_
+
+eval:
+  publication_protocol: full_matched
