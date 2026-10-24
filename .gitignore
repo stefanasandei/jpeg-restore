@@ -1,16 +1,21 @@
+# Runtime output and local model assets
 outputs/
 *.pth
 *.pt
-__pycache__
-wandb
+__pycache__/
 nohup.out
 results
-paper
-poster
-.codex
-.agents
-.ruff_cache
 hf
-.vscode
 /checkpoints/
 /external/
+
+# Local experiment and publication material
+wandb
+tests
+poster
+paper
+manuscript
+roedunet-*.pdf
+
+# Any hidden directory, at any depth (hidden files remain eligible)
+.*/
