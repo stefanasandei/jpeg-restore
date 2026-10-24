@@ -42,6 +42,13 @@ def environment_metadata(device):
             versions[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
             versions[name] = None
+    try:
+        driver = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"],
+            text=True, stderr=subprocess.DEVNULL,
+        ).strip().splitlines()[0] if device.type == "cuda" else None
+    except (OSError, subprocess.CalledProcessError, IndexError):
+        driver = None
     return {
         "python": sys.version,
         "executable": sys.executable,
@@ -50,7 +57,17 @@ def environment_metadata(device):
         "device": str(device),
         "gpu": torch.cuda.get_device_name(device) if device.type == "cuda" else None,
         "cuda": torch.version.cuda,
+        "nvidia_driver": driver,
         "cudnn": torch.backends.cudnn.version(),
+        "tf32_matmul": torch.backends.cuda.matmul.allow_tf32,
+        "tf32_cudnn": torch.backends.cudnn.allow_tf32,
+        "torch_cpu_threads": torch.get_num_threads(),
+        "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
+        "all_package_versions": dict(sorted(
+            (distribution.metadata["Name"], distribution.version)
+            for distribution in importlib.metadata.distributions()
+            if distribution.metadata and distribution.metadata.get("Name")
+        )),
         "git_revision": git_revision(ROOT),
     }
 

@@ -68,6 +68,12 @@ class JDECAdapter(Adapter):
             raise ValueError("the official JDEC model uses CUDA internally")
         self.dm = dct_manip
         state = torch.load(checkpoint_path(spec), map_location="cpu", weights_only=True)
+        encoder = state["model"]["args"]["encoder_spec"]
+        if encoder["name"] == "swinv2_rgb_nomore_deepir_rgbver":
+            # The released checkpoint retains the old registry label; the
+            # official train_JDEC.yaml names this factory swinv2_group_embedded.
+            # Arguments and every learned tensor are unchanged; loading is strict.
+            encoder["name"] = "swinv2_group_embedded"
         self.model = models.make(state["model"], load_sd=True).eval().to(self.device)
         self.nfe = 1
         self.work = TemporaryDirectory(prefix="jdec-coefficients-")
@@ -97,6 +103,32 @@ class JDECAdapter(Adapter):
         restored = self.model(*inputs) + 0.5
         height, width = jpeg_size(prepared)
         return restored[..., :height, :width]
+
+    def restore_protocol(self, prepared, seed):
+        tiling = self.spec.get("common_tiling")
+        if not tiling:
+            return self.restore(prepared, seed)
+        from .tiling import stitch
+
+        height, width = jpeg_size(prepared)
+        if height % 32 or width % 32:
+            raise ValueError("matched JDEC inputs must share the 32-pixel JPEG padding")
+        coefficients = self.dm.read_coefficients(str(self.jpeg_path))
+        q_y, q_c = coefficients[1][0], coefficients[1][1]
+        y = (coefficients[2] * q_y).clamp(-1024, 1016)
+        c = (coefficients[3] * q_c).clamp(-1024, 1016)
+        normalize = lambda value: (value + 1024) / 2040 * 2 - 1
+        y, c, q = [normalize(value).unsqueeze(0).to(self.device)
+                   for value in (y, c, torch.stack([q_y, q_c]))]
+        def run(top, left, h, w, index):
+            if any(value % 32 for value in (top, left, h, w)):
+                raise ValueError("matched coefficient tiles must align to 32 pixels")
+            yt = y[:, :, top//8:(top+h)//8, left//8:(left+w)//8]
+            ct = c[:, :, top//16:(top+h)//16, left//16:(left+w)//16]
+            return self.model(yt, ct, q) + 0.5
+        output, count = stitch(height, width, self.device, run, **tiling)
+        self.nfe = count
+        return output
 
     def close(self):
         super().close()

@@ -43,12 +43,34 @@ class Adapter:
         self.dtype = DTYPES[dtype]
         self.model = None
         self.nfe = None
+        boundary = spec.get("benchmark_input", "resident_rgb")
+        if boundary not in ("resident_rgb", "cached_jpeg_file"):
+            raise ValueError("unknown benchmark_input boundary")
+        if boundary == "cached_jpeg_file":
+            self.timing_scope = "cached_jpeg_file_to_rgb"
 
     def prepare(self, item):
         return item.rgb.to(self.device)
 
     def restore(self, prepared, seed):
         raise NotImplementedError
+
+    def restore_protocol(self, prepared, seed):
+        tiling = self.spec.get("common_tiling")
+        if not tiling:
+            return self.restore(prepared, seed)
+        from .tiling import stitch
+
+        if prepared.shape[0] != 1:
+            raise ValueError("the matched tiling protocol requires batch one")
+        if not hasattr(self, "_base_nfe"):
+            self._base_nfe = self.nfe
+        def run(top, left, height, width, index):
+            return self.restore(prepared[..., top:top+height, left:left+width],
+                                (seed + index) % 2**32)
+        output, count = stitch(*prepared.shape[-2:], self.device, run, **tiling)
+        self.nfe = self._base_nfe * count
+        return output
 
     def precision_context(self):
         return (

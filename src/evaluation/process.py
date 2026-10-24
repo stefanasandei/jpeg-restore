@@ -29,7 +29,10 @@ class ProcessAdapter(Adapter):
         self.timeout = float(spec.get("timeout", 1800))
         config = self.directory / "config.json"
         config.write_text(
-            json.dumps({"spec": spec, "device": str(device), "dtype": dtype})
+            json.dumps({"spec": spec, "device": str(device), "dtype": dtype,
+                        "cpu_threads": torch.get_num_threads(),
+                        "tf32_matmul": torch.backends.cuda.matmul.allow_tf32,
+                        "tf32_cudnn": torch.backends.cudnn.allow_tf32})
         )
         worker = Path(__file__).with_name("worker.py")
         try:
@@ -87,6 +90,10 @@ class ProcessAdapter(Adapter):
         return torch.from_numpy(
             np.load(self.directory / "output.npy", allow_pickle=False)
         ).to(self.device)
+
+    def restore_protocol(self, prepared, seed):
+        # The isolated worker applies the common protocol exactly once.
+        return self.restore(prepared, seed)
 
     def benchmark(self, item, warmup, iterations, seed):
         return self._request(

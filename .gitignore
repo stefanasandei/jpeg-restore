@@ -12,3 +12,5 @@ poster
 .ruff_cache
 hf
 .vscode
+/checkpoints/
+/external/

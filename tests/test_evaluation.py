@@ -11,11 +11,13 @@ from omegaconf import open_dict
 from PIL import Image
 
 from evaluation.adapters import JPEGAdapter, NativeAdapter, validate_output
-from evaluation.data import EvaluationInput, case_seed, compress, tensor_from_image
+from evaluation.data import EvaluationInput, case_seed, compress, synthetic_input, tensor_from_image
 from evaluation.external import JDECAdapter, PromptCIRAdapter
 from evaluation.performance import measure
+from evaluation.quality import evaluate_quality
 from evaluation.process import ProcessAdapter
 from evaluation.runner import evaluate, validate_config
+from evaluation.tiling import stitch
 from metrics import MetricSuite
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,6 +51,28 @@ def test_codec_and_case_seeds():
     assert case_seed(0, "live1", "x", 5) != case_seed(0, "live1", "x", 10)
 
 
+def test_quality_seed_and_jpeg_are_identical_after_dataset_relocation(tmp_path):
+    image = Image.fromarray(
+        np.random.default_rng(2).integers(0, 256, (16, 24, 3), dtype=np.uint8)
+    )
+    first, second = tmp_path / "original.png", tmp_path / "relocated.png"
+    image.save(first)
+    second.write_bytes(first.read_bytes())
+    cfg = config().eval
+    cfg.quality_factors = [10]
+    metrics = MetricSuite(["psnr"], {}, "cpu")
+    reports = []
+    for path in (first, second):
+        rows = []
+        evaluate_quality(
+            JPEGAdapter({}, "cpu", "float32"), "jpeg", {"live1": [str(path)]},
+            cfg, metrics, "cpu", rows, [], tmp_path,
+        )
+        reports.append(rows[0])
+    for field in ("seed", "image_sha256", "jpeg_sha256", "psnr"):
+        assert reports[0][field] == reports[1][field]
+
+
 def test_metric_rows_are_independent():
     suite = MetricSuite(["psnr", "ssim"], {}, "cpu")
     reference = torch.ones(1, 3, 33, 35)
@@ -72,6 +96,31 @@ def test_output_and_timing():
         validate_output(torch.zeros(1), item.rgb.shape)
     with pytest.raises(FloatingPointError):
         validate_output(torch.full_like(item.rgb, float("nan")), item.rgb.shape)
+
+
+def test_cached_jpeg_timing_decodes_the_same_input_inside_each_call():
+    class CaptureJPEG(JPEGAdapter):
+        def restore(self, prepared, seed):
+            assert torch.equal(prepared, item.rgb)
+            self.calls += 1
+            return prepared
+
+    item = synthetic_input(16, 24, 1, quality=10, seed=0)
+    adapter = CaptureJPEG({"benchmark_input": "cached_jpeg_file"}, "cpu", "float32")
+    adapter.calls = 0
+    result = measure(adapter, item, warmup=1, iterations=2, seed=0)
+    assert adapter.calls == 3
+    assert adapter.timing_scope == "cached_jpeg_file_to_rgb"
+    assert len(result["latencies_ms"]) == 2
+
+
+def test_common_tiling_preserves_every_pixel_including_irregular_edges():
+    image = torch.rand(1, 3, 65, 97)
+    def run(top, left, height, width, index):
+        return image[..., top:top+height, left:left+width]
+    restored, count = stitch(65, 97, "cpu", run, tile=32, overlap=8)
+    torch.testing.assert_close(restored, image, rtol=1e-6, atol=1e-7)
+    assert count > 1
 
 
 @pytest.mark.parametrize(

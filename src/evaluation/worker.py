@@ -3,12 +3,23 @@
 import json
 import sys
 import traceback
+import types
 from contextlib import redirect_stdout
 from pathlib import Path
 
 # A worker starts in the official repository; never import local `models` here.
 sys.path.insert(0, str(Path.cwd()))
 sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+# Some official checkouts use implicit namespace packages. A regular local
+# `models`/`utils` package otherwise wins even when the checkout is first.
+for name in ("models", "utils"):
+    directory = Path.cwd() / name
+    if (directory.is_dir() and not (directory / "__init__.py").exists()
+            and not (Path.cwd() / f"{name}.py").exists()):
+        package = types.ModuleType(name)
+        package.__path__ = [str(directory)]
+        sys.modules[name] = package
 
 
 def main():
@@ -28,9 +39,13 @@ def main():
 
     try:
         config = json.loads(Path(sys.argv[1]).read_text())
+        torch.set_num_threads(config.get("cpu_threads", torch.get_num_threads()))
+        torch.backends.cuda.matmul.allow_tf32 = config.get("tf32_matmul", False)
+        torch.backends.cudnn.allow_tf32 = config.get("tf32_cudnn", False)
         # Some official repositories use the current CUDA device implicitly.
         device = torch.device(config["device"])
         if device.type == "cuda":
+            device = torch.device("cuda", 0 if device.index is None else device.index)
             torch.cuda.set_device(device)
         seed_everything(0)
         with redirect_stdout(sys.stderr):
@@ -70,7 +85,7 @@ def main():
                     seed_everything(request["seed"])
                     prepared = adapter.prepare(item)
                     with torch.inference_mode(), adapter.precision_context():
-                        output = adapter.restore(prepared, request["seed"])
+                        output = adapter.restore_protocol(prepared, request["seed"])
                     output = validate_output(output, item.rgb.shape)
                     np.save(directory / "output.npy", output.cpu().numpy())
                     response = {"status": "ok", "nfe": adapter.nfe}

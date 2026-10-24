@@ -1,4 +1,7 @@
 import math
+import json
+from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
 
 import numpy as np
@@ -14,12 +17,16 @@ def evaluate_quality(
     adapter, model_name, datasets, cfg, metrics, device, image_rows, errors, output_dir
 ):
     summaries = []
+    fingerprints = {
+        path: sha256(Path(path).read_bytes()).hexdigest()
+        for paths in datasets.values() for path in paths
+    }
     for dataset_name, paths in datasets.items():
         for quality in cfg.quality_factors:
             rows = []
             for path in tqdm(paths, desc=f"{model_name}/{dataset_name}/QF{quality}"):
                 seed = case_seed(
-                    cfg.seed, dataset_name, str(Path(path).resolve()), quality
+                    cfg.seed, dataset_name, fingerprints[path], quality
                 )
                 row = {
                     "model": model_name,
@@ -27,16 +34,22 @@ def evaluate_quality(
                     "qf": quality,
                     "image": str(Path(path).resolve()),
                     "seed": seed,
+                    "image_sha256": fingerprints[path],
+                    "started_utc": datetime.now(timezone.utc).isoformat(),
                 }
                 try:
                     with Image.open(path) as source:
                         clean = source.convert("RGB")
-                    item = compress(clean, quality)
+                    item = compress(clean, quality, cfg.get("input_pad_multiple", 1))
+                    row["jpeg_sha256"] = sha256(item.jpeg).hexdigest()
+                    row["encoded_height"], row["encoded_width"] = item.rgb.shape[-2:]
                     seed_everything(seed)
                     prepared = adapter.prepare(item)
                     with torch.inference_mode(), adapter.precision_context():
-                        restored = adapter.restore(prepared, seed)
+                        restored = adapter.restore_protocol(prepared, seed)
                     restored = validate_output(restored, item.rgb.shape).to(device)
+                    restored = restored[..., :clean.height, :clean.width]
+                    row["nfe"] = adapter.nfe
                     reference = tensor_from_image(clean).to(device)
                     with torch.inference_mode():
                         values = metrics(restored, reference)
@@ -81,6 +94,9 @@ def evaluate_quality(
                         image_rows.append(row)
                         raise
                 image_rows.append(row)
+                row["finished_utc"] = datetime.now(timezone.utc).isoformat()
+                with (Path(output_dir) / "progress.jsonl").open("a") as stream:
+                    stream.write(json.dumps(row, allow_nan=False) + "\n")
                 rows.append(row)
             successful = [row for row in rows if row["status"] == "ok"]
             summary = {

@@ -1,9 +1,13 @@
 import time
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
+import cv2
 import numpy as np
 import torch
 
 from .adapters import seed_everything, validate_output
+from .data import EvaluationInput
 
 
 def synchronize(device):
@@ -14,14 +18,38 @@ def synchronize(device):
 
 
 def measure(adapter, item, warmup, iterations, seed):
-    """Synchronized wall time includes encoding/sampling/decoding, excludes IPC/I/O."""
-    prepared = adapter.prepare(item)
+    """Measure the declared boundary, with the same callable for warmup/timing."""
+    with TemporaryDirectory(prefix="jpeg-benchmark-input-") as directory:
+        if adapter.spec.get("benchmark_input") == "cached_jpeg_file":
+            if item.jpeg is None or item.rgb.shape[0] != 1:
+                raise ValueError("cached JPEG benchmarking requires one encoded image")
+            source = Path(directory) / "input.jpg"
+            source.write_bytes(item.jpeg)
+            if adapter.spec.get("kind") == "jdec":
+                # prepare stages identical JPEG bytes; restore reads coefficients
+                # from its cached file inside the timed call.
+                prepared = adapter.prepare(item)
+                restore = lambda seed: adapter.restore_protocol(prepared, seed)
+            else:
+                def restore(seed):
+                    rgb = cv2.cvtColor(cv2.imread(str(source)), cv2.COLOR_BGR2RGB)
+                    tensor = torch.from_numpy(rgb.copy()).permute(2, 0, 1)
+                    tensor = tensor.float().div_(255).unsqueeze(0)
+                    prepared = adapter.prepare(EvaluationInput(tensor, item.jpeg))
+                    return adapter.restore_protocol(prepared, seed)
+        else:
+            prepared = adapter.prepare(item)
+            restore = lambda seed: adapter.restore_protocol(prepared, seed)
+        return _measure_calls(adapter, item, restore, warmup, iterations, seed)
+
+
+def _measure_calls(adapter, item, restore, warmup, iterations, seed):
     seed_everything(seed)
     device = adapter.device
     samples = []
     with torch.inference_mode(), adapter.precision_context():
         for index in range(warmup):
-            output = adapter.restore(prepared, seed + index)
+            output = restore(seed + index)
             validate_output(output, item.rgb.shape)
             del output
         synchronize(device)
@@ -32,7 +60,7 @@ def measure(adapter, item, warmup, iterations, seed):
         for index in range(iterations):
             synchronize(device)
             start = time.perf_counter()
-            output = adapter.restore(prepared, seed + index)
+            output = restore(seed + index)
             synchronize(device)
             samples.append((time.perf_counter() - start) * 1000)
             if index != iterations - 1:

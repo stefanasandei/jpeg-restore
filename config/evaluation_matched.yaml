@@ -1,0 +1,58 @@
+defaults:
+  - evaluation
+  - _self_
+
+# One full-image, trained-checkpoint protocol for quality AND system timing.
+# Replace paths for another machine; archived image/bitstream hashes identify inputs.
+dataset:
+  div2k_val: [/mnt/projects/models/01-datasets/DF2K/DF2K_valid_HR]
+
+eval:
+  mode: both
+  models: [jpeg, meanflow_1, meanflow_2, fbcnn, promptcir, jdec]
+  datasets: [live1, urban100, div2k_val]
+  dtype: float32
+  device: cuda
+  metric_device: cuda
+  seed: 0
+  cpu_threads: 4
+  allow_tf32: false
+  quality_factors: [5, 10, 20]
+  continue_on_error: true
+  input_pad_multiple: 32
+  metric_options:
+    clipiqa:
+      model_name: checkpoints/matched/clip-vit-base-patch16
+      local_files_only: true
+  checkpoints:
+    meanflow: checkpoints/matched/meanflow/meanflow_jpeg_qf5_20.pth
+  model_specs:
+    jpeg:
+      benchmark_input: cached_jpeg_file
+      common_tiling: {tile: 224, overlap: 32}
+    meanflow_1:
+      benchmark_input: cached_jpeg_file
+      common_tiling: {tile: 224, overlap: 32}
+    meanflow_2:
+      benchmark_input: cached_jpeg_file
+      common_tiling: {tile: 224, overlap: 32}
+    fbcnn:
+      benchmark_input: cached_jpeg_file
+      common_tiling: {tile: 224, overlap: 32}
+      repo: external/FBCNN
+      checkpoint: checkpoints/matched/fbcnn_color.pth
+    promptcir:
+      benchmark_input: cached_jpeg_file
+      common_tiling: {tile: 224, overlap: 32}
+      repo: external/PromptCIR-NTIRE24
+      checkpoint: checkpoints/matched/promptcir/checkpoint/model_best.pth
+    jdec:
+      benchmark_input: cached_jpeg_file
+      common_tiling: {tile: 224, overlap: 32}
+      repo: external/JDEC
+      checkpoint: checkpoints/matched/jdec.pth
+  performance:
+    sizes: [[512, 512], [1024, 1024]]
+    batch_sizes: [1]
+    warmup: 5
+    iterations: 20

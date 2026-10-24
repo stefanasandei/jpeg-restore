@@ -20,9 +20,15 @@ def tensor_from_image(image):
     return torch.from_numpy(array).permute(2, 0, 1).float().div_(255).unsqueeze(0)
 
 
-def compress(image, quality):
+def compress(image, quality, pad_multiple=1):
     """Encode once; RGB and coefficient-based models share the same bitstream."""
     rgb = np.asarray(image.convert("RGB"))
+    if pad_multiple < 1:
+        raise ValueError("pad_multiple must be positive")
+    if pad_multiple > 1:
+        height, width = rgb.shape[:2]
+        rgb = cv2.copyMakeBorder(rgb, 0, (-height) % pad_multiple,
+                                0, (-width) % pad_multiple, cv2.BORDER_REFLECT_101)
     ok, encoded = cv2.imencode(
         ".jpg",
         cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR),

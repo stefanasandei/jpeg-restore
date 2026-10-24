@@ -76,6 +76,11 @@ def resolve_specs(cfg):
 
 def evaluate(cfg):
     settings = cfg.eval
+    if settings.get("cpu_threads"):
+        torch.set_num_threads(int(settings.cpu_threads))
+    if "allow_tf32" in settings:
+        torch.backends.cuda.matmul.allow_tf32 = bool(settings.allow_tf32)
+        torch.backends.cudnn.allow_tf32 = bool(settings.allow_tf32)
     # Older training configurations remain valid entry points.
     if "models" not in settings:
         defaults = OmegaConf.load(
@@ -100,6 +105,7 @@ def evaluate(cfg):
         else ("cuda" if torch.cuda.is_available() else "cpu")
     )
     if device.type == "cuda":
+        device = torch.device("cuda", 0 if device.index is None else device.index)
         torch.cuda.set_device(device)
         if settings.dtype == "bfloat16" and not torch.cuda.is_bf16_supported():
             raise ValueError("selected CUDA device does not support bfloat16")
