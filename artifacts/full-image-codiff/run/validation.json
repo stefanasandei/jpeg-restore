@@ -1,0 +1,61 @@
+{
+  "validated_utc": "2026-10-24T21:47:03.599749+00:00",
+  "passed": true,
+  "models": [
+    "jpeg",
+    "fbcnn",
+    "jdec",
+    "promptcir",
+    "codiff",
+    "meanflow_1",
+    "meanflow_2"
+  ],
+  "cases_per_model": 687,
+  "total_image_results": 4809,
+  "timing_rows": 14,
+  "input_hashes_and_seeds_identical": true,
+  "summaries_recomputed_from_raw_records": true,
+  "csv_json_agreement": true,
+  "official_checkpoint_hashes_and_upstream_revisions_verified": true,
+  "inference_policy": {
+    "jpeg": {
+      "tile": 224,
+      "overlap": 32,
+      "clip": true
+    },
+    "fbcnn": {
+      "tile": 224,
+      "overlap": 32,
+      "clip": true
+    },
+    "jdec": {
+      "tile": 224,
+      "overlap": 32,
+      "clip": true
+    },
+    "promptcir": {
+      "tile": 224,
+      "overlap": 32,
+      "clip": true
+    },
+    "codiff": "native_codiff",
+    "meanflow_1": "full_image",
+    "meanflow_2": "full_image"
+  },
+  "dtype": "float32",
+  "tf32": true,
+  "timing_boundary": "cached_jpeg_file_to_rgb",
+  "datasets": {
+    "live1": 29,
+    "urban100": 100,
+    "div2k_val": 100
+  },
+  "validated_file_sha256": {
+    "per_image.csv": "9b35f2f254138200cc8e26e9ea6acfbc30403c825a1a99598ce89629ab0bbcb7",
+    "manifest.json": "ab4f11a5ce2ee5371add0f8f10cce33a47b619fc369a9e61f4eda469f438c0c8",
+    "results.json": "7a4a927a2fed687a7c7370acb2ff622e3ee70434f519657b0c231781afe958cf",
+    "per_image.jsonl": "71b48e883ad23fe03fc9d0c1d37142a0c7891dc5e9abef8106aee457c9ea59f7",
+    "quality.csv": "4a86aacc0683aa05357919fb454cd35855134e82daefe1099df11065f794594f",
+    "performance.csv": "b7a4ebbedbce6a2a490aa76754e08b824dd65ae91782230082d3207571ea59e3"
+  }
+}

@@ -9,7 +9,7 @@
 
 ## ⚡ Highlights
 
-* **Auditable evaluation:** shared JPEG inputs, trained checkpoints, tiling, precision, metrics, and timing boundaries across all compared methods.
+* **Auditable evaluation:** shared JPEG inputs, trained checkpoints, precision, metrics, and timing boundaries across all compared methods.
 * **Wavelet-Domain Processing:** Replaces heavy learned VAEs with a **two-level 2D Haar transform**, avoiding lossy compression and latency bottlenecks.
 * **Linear DiT:** a 65M-parameters model trained from scratch, with [Rank Enhanced Linear Attention](https://www.alphaxiv.org/abs/2505.16157) in every block
 * **1–2 Step Inference:** Trained with **Mean Flows** for generation, without multi-stage distillation pipelines.
@@ -57,11 +57,11 @@ See [evaluation.md](./evaluation.md) for the matched quality/performance protoco
 ## 📊 Benchmark Results
 
 <!-- MATCHED_RESULTS_START -->
-The full comparison validates **4,122 image cases**, **54 quality summaries**, and **12 timing configurations** across LIVE-1, Urban100 and DIV2K validation at QF5/10/20. FBCNN, JDEC, PromptCIR and both MeanFlow schedules use the same JPEG inputs, trained checkpoints, FP32/TF32 policy, tile clipping/blending, metric implementations and timing boundary.
+The complete comparison validates **4,809 image cases**, **63 quality summaries**, and **14 timing configurations** on LIVE-1, Urban100 and DIV2K validation at QF5/10/20. FBCNN, JDEC, PromptCIR, CODiff and both MeanFlow schedules share JPEG inputs, metrics, FP32/TF32 precision and timing boundaries. **MeanFlow processes whole images without tiling**, in one or two evaluations; baseline inference settings are documented separately.
 
-At LIVE-1 QF10, two-update MeanFlow obtains LPIPS **0.1622** versus **0.2301** for PromptCIR, the lowest baseline at this setting. Matched 1024² throughput is **1.202 images/s**. These are measured operating points, not overall restoration superiority.
+At LIVE-1 QF10, two-update MeanFlow obtains LPIPS **0.1596**, versus **0.1427** for CODiff. Its matched 1024² throughput is **3.090 images/s**, versus **0.565** for CODiff. These are measured quality/compute operating points.
 
-See [complete validated records](artifacts/matched-24-oct/run) and [reproduction protocol](evaluation.md). Paper PDFs and manuscript sources remain local.
+See [complete validated records](artifacts/full-image-codiff/run) and [reproduction protocol](evaluation.md). Paper PDFs and manuscript sources remain local.
 <!-- MATCHED_RESULTS_END -->
 
 The independent [JVP audit](src/audit_jvp.py) and [CPU records](artifacts/matched-24-oct/jvp_public_cpu.json) compare outputs, tangents, losses, and parameter gradients on the trained checkpoint. These bounded CPU checks do not establish historical GPU memory reductions.

@@ -1,0 +1,52 @@
+{
+  "created_utc": "2026-10-24T21:42:01.563598+00:00",
+  "transformation": "Select the named model cohorts from three completed source reports and merge them; normalize portable path prefixes and scope package inventory; explicitly label aggregate metadata and retain authoritative per-run snapshots. Numerical values, input/checkpoint/source hashes, seeds, case timestamps and all raw timing samples are unchanged.",
+  "sources": [
+    {
+      "name": "legacy",
+      "used_models": [
+        "fbcnn",
+        "jdec",
+        "jpeg",
+        "promptcir"
+      ],
+      "files": {
+        "manifest.json": "f2a2a28f0b70939e4d8e80389b537e78523c1436418b84f298a9a079fc7c77b7",
+        "results.json": "0b4224b63f94ff69daa6d806e16957a77537db4324db2fac7b4972e8fc125c5f",
+        "per_image.jsonl": "d276b073b17de41e0d1b84bbd916fc12c184a5bd6471b7fef618e00aae1dc925",
+        "quality.csv": "fd424a350fc07e529daebd69e10bd87b0c509a164a05437e3ed2f7a1594ff691",
+        "performance.csv": "2b9126217ec72a02d1305abf712b5b27245c9a1f973ba6592bc39050e9ef6477",
+        "per_image.csv": "b62bfb2b4917bd62ca143877a3b4a135fbb91d1bfdfe1dfe466e84005b1fea62"
+      }
+    },
+    {
+      "name": "meanflow",
+      "used_models": [
+        "meanflow_1",
+        "meanflow_2"
+      ],
+      "files": {
+        "manifest.json": "ab3979220514c2a1a0da36e6108a592104e9c2d91e091a3adddb53215d5ae644",
+        "results.json": "821168d984e942573bab9afedf412a3b1591280f822a44b07c364e9b47e6fb57",
+        "per_image.jsonl": "a422ec54fbb7bd46b17a5abf8e3520aa894360308ccaeacdc86adf0cbd5f84fb",
+        "quality.csv": "083e6191a248bf997ba6a623272abf3dff0939bda8c58d9d8135d4a8822887e3",
+        "performance.csv": "c89222f98900614d867dc69cf3e76cb5d9d3b5725ea91847ed20c6c04467d7c4",
+        "per_image.csv": "475608bf3817b9b506014c2279a676ad7d334157d6cb54d79d8982838048203c"
+      }
+    },
+    {
+      "name": "codiff",
+      "used_models": [
+        "codiff"
+      ],
+      "files": {
+        "manifest.json": "63e89dc31a119e60947ec2120478aea9f6167a4b0e90efee8ee0004d065dbcf6",
+        "results.json": "054a214cbbd6ad7d153ee93e93e4a86c9727dbcf7b9dfd9a9eeef3a85dd53562",
+        "per_image.jsonl": "8d365aea2cea527ca5640edec07b93f50db9f770287a6939d9d652574b05f274",
+        "quality.csv": "79162193feff0b724a6e974788615d3b698cb3b2e25063b48d63490d9a3841b4",
+        "performance.csv": "57246016b4a33a926070f7f9168ab289de9d32ace64782b6668bdcde392ad6af",
+        "per_image.csv": "ae4a08605ab5e5acdcb261383ac81c690e404b94d860f19c9024328c2a5d091a"
+      }
+    }
+  ]
+}

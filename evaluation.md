@@ -2,9 +2,9 @@
 
 Paper PDFs, manuscript sources, tests, experiment logs, and hidden directories are local-only and excluded from Git. The public release contains evaluation code, protocol documentation, and the evidence archive.
 
-The revised comparison uses one evaluation harness and trained checkpoints for **FBCNN, JDEC, PromptCIR, and MeanFlow (one or two updates)**, plus the JPEG input. The governing preset is [`config/evaluation_matched.yaml`](config/evaluation_matched.yaml). Quality and latency use the same checkpoints, precision policy, tile grid, and reconstruction procedure. Published scores, architecture proxies, and historical ensemble timings are excluded from this comparison.
+The revised comparison uses one evaluation harness and trained checkpoints for **FBCNN, JDEC, PromptCIR, CODiff, and MeanFlow (one or two updates)**, plus the JPEG input. The governing preset is [`config/evaluation_comparison.yaml`](config/evaluation_comparison.yaml). MeanFlow processes the complete padded image without tiles, using one or two network evaluations. Each model uses the same inference settings for quality and latency; inputs, precision, metrics, and timing boundaries are shared across models. Published scores, architecture proxies, and historical ensemble timings are excluded from this comparison.
 
-The full results are complete and validated in [`artifacts/matched-24-oct/run`](artifacts/matched-24-oct/run): **4,122 image cases, 54 quality summaries, and 12 timing configurations**. Existing local partial records remain under ignored `outputs/` and are reused only after source, checkpoint, metric/native asset, environment, image/JPEG, and seed checks. Historical transcriptions under `artifacts/roedunet-24-oct` do not fill any final comparison cell.
+The full results are complete and validated in [`artifacts/full-image-codiff/run`](artifacts/full-image-codiff/run): **4,809 image cases, 63 quality summaries, and 14 timing configurations**. Both MeanFlow schedules were rerun on complete images. CODiff was measured using its released task-specific weights; the three unchanged regression baselines and JPEG cases were reused after cohort/input/precision validation. Source run manifests, source-file hashes, and original evidence-file hashes identify the provenance of every group. The older `matched-24-oct` archive includes tiled MeanFlow results and is historical; those MeanFlow scores/timings do not enter current tables. Historical paper transcriptions also do not fill comparison cells.
 
 ## Reader entry points
 
@@ -15,20 +15,25 @@ The scripts directory contains only training, evaluation, and benchmark launcher
 Use the project dependencies in `requirements.txt`, a CUDA-enabled PyTorch installation, Git, `curl`, `gdown`, the Hugging Face `hf` CLI, a C++20 compiler, and libjpeg development headers. Run from the repository root:
 
 ```bash
-python scripts/prepare_matched_eval.py
-export PYTHONPATH="$PWD/checkpoints/matched/python-deps:$PWD/checkpoints/matched/dct-extension/dct_manip${PYTHONPATH:+:$PYTHONPATH}"
-export TORCH_HOME="$PWD/checkpoints/matched/torch-cache"
-export HF_HUB_CACHE="$PWD/checkpoints/matched/hub-cache"
+export JPEG_EVAL_ASSET_ROOT=/mnt/projects/jpeg-restoration/models/matched
+export TMPDIR=/mnt/projects/jpeg-restoration/tmp
+export HF_HOME=/mnt/projects/jpeg-restoration/cache/hf
+export PIP_CACHE_DIR=/mnt/projects/jpeg-restoration/cache/pip
+python scripts/prepare_matched_eval.py --storage-root /mnt/projects/jpeg-restoration
+python scripts/prepare_matched_eval.py --codiff-only --storage-root /mnt/projects/jpeg-restoration
+export PYTHONPATH="$JPEG_EVAL_ASSET_ROOT/python-deps:$JPEG_EVAL_ASSET_ROOT/dct-extension/dct_manip${PYTHONPATH:+:$PYTHONPATH}"
+export TORCH_HOME="$JPEG_EVAL_ASSET_ROOT/torch-cache"
+export HF_HUB_CACHE="$JPEG_EVAL_ASSET_ROOT/hub-cache"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
-bash scripts/eval.sh --config-name evaluation_matched \
-  eval.output_dir=outputs/matched-reproduction \
+bash scripts/eval.sh --config-name evaluation_comparison \
+  eval.output_dir=/mnt/projects/jpeg-restoration/outputs/comparison-reproduction \
   'dataset.live1=[/path/to/LIVE1]' \
   'dataset.urban100=[/path/to/Urban100]' \
   'dataset.div2k_val=[/path/to/DIV2K_valid_HR]'
 ```
 
-Preparation checks out the official source revisions, downloads the trained weights and pinned CLIP assets, installs JDEC's two extra Python dependencies in `checkpoints/matched/python-deps`, and builds its official coefficient reader locally. It checks downloaded checkpoint/CLIP bytes against the archived SHA-256 values. A rebuilt native library has a platform-dependent binary hash; its source revision and build settings identify the implementation. Do not use an unrelated checkpoint bearing the same filename.
+Preparation checks out the official source revisions, downloads the trained weights and pinned CLIP assets, installs JDEC's two extra Python dependencies in `$JPEG_EVAL_ASSET_ROOT/python-deps`, and builds its official coefficient reader locally. It checks downloaded checkpoint/CLIP bytes against the archived SHA-256 values. A rebuilt native library has a platform-dependent binary hash; its source revision and build settings identify the implementation. Do not use an unrelated checkpoint bearing the same filename.
 
 Use a fresh output directory. Dataset paths may change: image content, dataset name, QF, and the base seed determine the sampling seed. Before comparing a reproduction, compare its image and encoded-JPEG hashes with the archived cohort. Different codec builds can produce different JPEG bytes even at the same QF.
 
@@ -45,19 +50,21 @@ For a short functionality check, use `eval.max_images=1` and fewer timing repeti
 | Compression | QF 5, 10, 20; one OpenCV JPEG encode per image/QF |
 | Colour and range | Pillow reference conversion to RGB; RGB→BGR for OpenCV encode; BGR→RGB after decode; float tensors in [0,1] |
 | Shape preparation | Reflect-101 padding on the bottom/right to multiples of 32 **before** JPEG encoding |
-| Inference grid | 224×224 tiles, nominal overlap 32, stride 192; final tile anchored to each image boundary |
-| Reconstruction | Clip each tile prediction to [0,1] before equal-weight FP32 accumulation and division |
+| MeanFlow inference | Complete padded RGB image; no tiling/blending; one or two network evaluations |
+| Regression inference | FBCNN/JDEC/PromptCIR: 224×224 tiles, overlap 32, stride 192, boundary anchoring |
+| CODiff inference | Released native VAE/latent tiling, CaVE, one diffusion update, PIL/AdaIN colour correction |
+| Regression tile reconstruction | Clip each tile prediction to [0,1] before equal-weight FP32 accumulation and division |
 | Scoring region | Entire original reference dimensions; remove added padding only; no resize or border shaving |
-| Prediction conversion | Clamp restored RGB to [0,1]; no 8-bit rounding before metrics |
-| Randomness | Base seed 0; stable content-based per-image/QF seed; tile seed `(case_seed + tile_index) mod 2^32` |
+| Prediction conversion | Clamp RGB to [0,1]; CODiff retains release PIL quantization; other outputs stay floating point |
+| Randomness | Base seed 0; stable content-based case seed; only the regression tile wrapper uses `(case_seed + tile_index) mod 2^32` |
 | Precision | FP32 weights and tensors; TF32 enabled for both CUDA matrix multiplication and cuDNN, consistently for every model and metric |
 | Execution | Batch one, eager inference, four PyTorch CPU threads, one RTX 3090 |
 
-The 224-pixel tile size accommodates JDEC's seven-token Swin windows and the models' spatial divisibility constraints. Padding to 32 ensures that tile origins also align with JPEG blocks/chroma samples. A final boundary tile may overlap more than 32 pixels. All compared restorers use this same grid; this is a comparison of these specified operating points.
+The 224-pixel tile size accommodates JDEC's seven-token Swin windows and the models' spatial divisibility constraints. Padding to 32 ensures that tile origins also align with JPEG blocks/chroma samples. A final boundary tile may overlap more than 32 pixels. Only FBCNN, JDEC, and PromptCIR use this grid. MeanFlow has no external inference tiling. CODiff uses its native internal settings below. This is a comparison of the documented operating points, rather than a requirement that different architectures execute the same number of calls.
 
-RGB models consume the decoded shared JPEG. JDEC extracts coefficients and quantization tables from **the same encoded bitstream**, then selects coefficient regions matching the common pixel tiles. Tiles are never recompressed independently. The synthesis QF is not supplied as an oracle conditioning value to any network. PromptCIR uses one released checkpoint (`model_best.pth`), without a second checkpoint, transpose ensemble, or self-ensemble. MeanFlow uses its released weights with one or two updates per tile.
+RGB models consume the decoded shared JPEG. JDEC extracts coefficients and quantization tables from **the same encoded bitstream**, then selects coefficient regions matching the common pixel tiles. Tiles are never recompressed independently. The synthesis QF is not supplied as an oracle conditioning value to any network. PromptCIR uses one released checkpoint (`model_best.pth`), without a second checkpoint, transpose ensemble, or self-ensemble. MeanFlow uses its released weights with one or two updates over the full image.
 
-The case seed is the little-endian integer represented by the first four bytes of SHA-256 over UTF-8 `base_seed/dataset/image_sha256/qf`. Tile traversal is row-major. This rule survives dataset relocation and model reordering. CUDA deterministic algorithms are not forced; recorded seeds do not imply bitwise agreement across different software/hardware stacks.
+The case seed is the little-endian integer represented by the first four bytes of SHA-256 over UTF-8 `base_seed/dataset/image_sha256/qf`. The regression tile wrapper traverses tiles row-major and increments the case seed by tile index. MeanFlow and CODiff seed their complete restoration path once per case. This rule survives dataset relocation and model reordering. CUDA deterministic algorithms are not forced; recorded seeds do not imply bitwise agreement across different software/hardware stacks.
 
 The local directory named `DF2K_valid_HR` contains precisely the 100 DIV2K validation images above; its name alone is not the split definition. The image list and hashes identify the actual evaluation cohort. Training uses all images from the first two LSDIR shards (`shard-00`, `shard-01`) alongside DF2K training. Illustrative LSDIR crops are excluded from the quantitative benchmark, and illustrative status does not establish independence from training.
 
@@ -81,11 +88,11 @@ CLIPIQA averages the positive softmax probability within each pair: `Good image`
 
 Both 512×512 and 1024×1024 are measured at batch one on a seeded synthetic QF10 JPEG. Each model has five warm-up calls and 20 measured calls, with CUDA synchronization before and after each measured call. The timing boundary is **a cached JPEG file to a restored RGB tensor** for every method.
 
-Included: reading the cached file, RGB decoding or JDEC coefficient extraction, host/device transfers, model preparation within the restoration path, all tile calls, overlap blending, and MeanFlow Haar transforms/sampling/decoding. Excluded: creating/staging the source JPEG, loading checkpoints, warm-up, metrics, writing predictions, and worker IPC. Filesystem caching is warm; this is not cold-storage I/O latency. Tile finite/shape checks and clipping are inside the common reconstruction path; final full-image output validation runs outside the timed interval. Performance is collected before loading metric networks.
+Included: reading the cached file, RGB decoding or JDEC coefficient extraction, host/device transfers, model preparation within the restoration path, method-specific tiling/blending and postprocessing, and MeanFlow full-image Haar transforms/sampling/decoding. CODiff timing includes CaVE, VAE encode/decode, UNet, scheduler, CPU PIL/AdaIN colour correction and transfers. Excluded: creating/staging the source JPEG, loading checkpoints, warm-up, metrics, writing predictions, and worker IPC. Filesystem caching is warm; this is not cold-storage I/O latency. Regression tile finite/shape checks and clipping are inside their reconstruction path; final full-image output validation runs outside the timed interval. Performance is collected before loading metric networks.
 
 The raw `results.json` report contains all 20 wall-clock samples, arithmetic mean, median, population standard deviation, p95 (`numpy.percentile`), and throughput `1000 / mean_ms` at batch one. GPU peak allocated/reserved memory is recorded after resetting peak statistics following warm-up; allocated peaks include resident model/input storage. No optimizer or metric model is included in the performance measurement.
 
-NFE counts **actual network calls over all tiles**, rather than just restoration updates. There are nine tiles at 512² and 36 at 1024²: FBCNN, JDEC, PromptCIR, and one-update MeanFlow therefore use 9/36 calls; two-update MeanFlow uses 18/72. JPEG has zero network calls. The one-/two-update names describe each tile's sampling schedule.
+NFE counts **restoration-trunk or diffusion-denoiser calls**. MeanFlow uses 1 or 2 full-image calls at either resolution. FBCNN, JDEC, and PromptCIR use 9 calls at 512² and 36 at 1024². CODiff takes one diffusion update, requiring 1 UNet call at 512² and 4 latent-tile UNet calls at 1024². CaVE and VAE invocations are excluded from its denoiser NFE but included in its parameter count and all timing samples. JPEG has zero network calls.
 
 ## Asset and run provenance
 
@@ -100,16 +107,17 @@ Pinned baseline implementations:
 | [FBCNN](https://github.com/jiaxi-jiang/FBCNN) | `54d1831927506b3247e2d4d245abb4f4dab1a1cd` |
 | [JDEC](https://github.com/WooKyoungHan/JDEC) | `e9fe8354754dd062dbf1defebb220e290507edd2` |
 | [PromptCIR](https://github.com/lbc12345/PromptCIR-NTIRE24) | `3506b1aa0e6588fdf4e0b8345d90679adf1e2220` |
+| [CODiff](https://github.com/jp-guo/CODiff) | `86e2f0499456298613472fa164417d1cce0a0cb7` plus the recorded FP32 cast patch |
 
 MeanFlow weights: Hub revision `33315831b6b342d3b8ddbdc70aa11cb84e55c66b`; SHA-256 `fbb573706c64ae90da85e47d1ff3377734264142460770c54ebadc50a4ba4caa`. CLIP revision: `57c216476eefef5ab752ec549e440a49ae4ae5f3`. Every remaining full asset hash is in the linked manifest, rather than abbreviated in this guide.
 
 JDEC's released checkpoint names its encoder `swinv2_rgb_nomore_deepir_rgbver`; the adapter maps that legacy name to the official `swinv2_group_embedded` factory used by its released training configuration. Encoder arguments and weights remain unchanged, with strict state-dictionary loading. Worker namespace isolation accommodates the upstream repos' module layout. The coefficient extension uses the pinned official `dct_manip.cpp`, `-O1 -std=c++20`, and `-ljpeg`; compiler and linked-library identity belong to the recorded build environment.
 
-The public evidence export normalizes personal/workspace/dataset path prefixes and limits installed-package inventory to evaluation dependencies. Numeric results, input/checkpoint/source hashes, seeds, and raw timing samples are preserved; full original records stay locally under ignored `outputs/`. The public export records its normalization steps and original file hashes in `run/public-export.json`.
+The public evidence export normalizes personal/workspace/dataset path prefixes and limits installed-package inventory to evaluation dependencies. Numeric results, input/checkpoint/source hashes, seeds, and raw timing samples are preserved; original new runs stay under `/mnt/projects/jpeg-restoration/outputs`; legacy originals remain under ignored project `outputs/`. The public export records its normalization steps and original file hashes in [`export-provenance.json`](artifacts/full-image-codiff/export-provenance.json).
 
-The full aggregate manifest also identifies the source run of every reused/measured case and the SHA-256 of each original run manifest.
+The current aggregate manifest records the source manifests and original file hashes for the reused regression/JPEG cohort, the full-image MeanFlow rerun, and the CODiff run. Numeric data are preserved; portable path prefixes and unrelated installed-package inventory are the only export transformations. See [`export-provenance.json`](artifacts/full-image-codiff/export-provenance.json).
 
-The run manifest records the resolved configuration, source-file SHA-256 hashes, repository revisions, checkpoint hashes, input paths, model parameter counts, weight dtypes, worker environments, CPU thread count, TF32 flags, GPU, driver, CUDA/cuDNN, Python, and installed package versions. OpenCV and PyTorch build reports are archived separately. `system-and-upstream.json` records CPU/compiler/library details, tracked upstream checkout status, and hashes of upstream implementation files; `requirements-recorded.txt` lists the principal installed dependency versions. The measured stack is Python 3.14.4, PyTorch 2.13.0, TorchMetrics 1.8.2, PyIQA 0.1.16, Transformers 5.5.3, CUDA 13.0, and NVIDIA driver 595.71.05. Full records govern over this abbreviated list.
+The run manifest records the resolved configuration, source-file SHA-256 hashes, repository revisions, checkpoint hashes, input paths, model parameter counts, weight dtypes, worker environments, CPU thread count, TF32 flags, GPU, driver, CUDA/cuDNN, Python, and installed package versions. OpenCV and PyTorch build reports are archived separately. `system-and-upstream.json` records CPU/compiler/library details, tracked upstream checkout status, and hashes of upstream implementation files; `requirements-recorded.txt` lists the principal installed dependency versions. The parent evaluation/metric stack is Python 3.14.4, PyTorch 2.13.0, TorchMetrics 1.8.2, PyIQA 0.1.16, Transformers 5.5.3, CUDA 13.0, and NVIDIA driver 595.71.05. Full records govern over this abbreviated list.
 
 | File in the run directory | Contents |
 | --- | --- |
@@ -118,16 +126,16 @@ The run manifest records the resolved configuration, source-file SHA-256 hashes,
 | `quality.csv` | Dataset/QF means, standard deviations, successful/expected counts |
 | `performance.csv`, `results.json` | Timings, raw repetitions, memory, NFE, parameter counts, timing boundary; combined summaries |
 | `errors.csv` | Explicit failures; no replacement with historical results |
-| `progress.jsonl` | Append-only per-image progress while the run is active |
+| `progress.jsonl` (local run only) | Append-only per-image progress while the run is active; final exports use `per_image.jsonl` |
 | `validation.json` | Successful complete-run protocol/cohort validation, generated only after checks pass |
 
 Validate a completed run with:
 
 ```bash
-python scripts/validate_matched_run.py outputs/matched-reproduction
+python scripts/validate_matched_run.py artifacts/full-image-codiff/run
 ```
 
-The validator rejects failed/partial cohorts, subset runs, missing trained-weight identities, inconsistent precision/worker settings, different tiling, mismatched image/JPEG hashes or seeds, and incomplete timing samples. It requires the same cohort for every model. The checks also require the exact official checkpoint hashes and pinned baseline revisions, recompute quality means/standard deviations and timing means/throughput, and verify that CSV views agree with the raw JSON records. A successful run does not establish superiority beyond the tested models, datasets, QFs, and inference settings.
+The validator rejects failed/partial cohorts, subset runs, missing trained-weight identities, inconsistent precision/worker settings, inference settings differing from the documented model policy, mismatched image/JPEG hashes or seeds, and incomplete timing samples. It requires the same cohort for every model. The checks also require the exact official checkpoint hashes and pinned baseline revisions, recompute quality means/standard deviations and timing means/throughput, and verify that CSV views agree with the raw JSON records. A successful run does not establish superiority beyond the tested models, datasets, QFs, and inference settings.
 
 ## Figures and independent architecture measurements
 
@@ -135,15 +143,15 @@ Render the quality/throughput figure directly from a validated matched run:
 
 ```bash
 python src/evaluation/plots.py pareto \
-  --quality outputs/matched-reproduction \
-  --performance outputs/matched-reproduction \
+  --quality /mnt/projects/jpeg-restoration/outputs/comparison-reproduction \
+  --performance /mnt/projects/jpeg-restoration/outputs/comparison-reproduction \
   --dataset live1 --qf 10 --size 1024 \
-  --output outputs/matched-reproduction/figures
+  --output /mnt/projects/jpeg-restoration/outputs/comparison-reproduction/figures
 ```
 
 The x-axis measures 1024² deployment throughput; the y-axis averages LIVE-1 QF10 scores, whose images have their original sizes. Both axes use the same model operating configuration. The plotted frontier applies only to these measured settings.
 
-The paper's separately identified BF16, full-image, one-forward-pass backbone scaling experiment isolates architecture cost. It is not the FP32 tiled restoration comparison above. To collect a new architecture sweep and render its plots:
+The paper's separately identified BF16, full-image, one-forward-pass backbone scaling experiment isolates architecture cost. It is separate from the complete FP32 restoration-system comparison above. To collect a new architecture sweep and render its plots:
 
 ```bash
 python src/benchmark.py eval.device=cuda eval.dtype=bfloat16 \
@@ -155,6 +163,19 @@ python src/evaluation/plots.py scaling \
 
 Optional DiffBIR, SUPIR, and Rectified Flow adapters remain available in the general evaluation presets. They require their own trained weights and configurations and do not enter the matched paper comparison. There is no trained SODiff adapter/checkpoint evaluation in this repository.
 
+
+Current copied baseline/metric asset identities and verification times are recorded in [`reused-assets-verification.json`](artifacts/full-image-codiff/reused-assets-verification.json). These are checks of existing bytes on the data volume; their verification times do not stand in for original download times.
+
+## CODiff checkpoint and implementation provenance
+
+CODiff is evaluated locally from the [released implementation](https://github.com/jp-guo/CODiff), revision `86e2f0499456298613472fa164417d1cce0a0cb7`, and both official task-specific checkpoints. [`codiff-assets.json`](artifacts/full-image-codiff/codiff-assets.json) records full SHA-256 hashes and actual UTC download start/completion times for CODiff, CaVE, and the required SD2.1-base components. [`codiff-source.json`](artifacts/full-image-codiff/codiff-source.json) identifies every upstream Python file; the run manifest independently records the working-tree patch hash and the model files actually loaded.
+
+The original `stabilityai/stable-diffusion-2-1-base` endpoint was unavailable. We downloaded only the UNet, VAE and scheduler from the public `Manojb/stable-diffusion-2-1-base` mirror at revision `0094d483a120f3f33dafbd187ea4aa60d10de75c`. The mirror source is explicit; no random or unrelated pretrained backbone substitutes for the trained CODiff weights. The checkpoint, CaVE, and all backbone file hashes are checked by the comparison validator. No text encoder or tokenizer is needed by CODiff.
+
+Native settings: VAE encoder tile size 1024; VAE decoder tile size 224; latent tile size 96, overlap 32; timestep 499; one DDPM scheduler update; LoRA adapters active and unmerged; released AdaIN colour correction and its PIL quantization. There is no external RGB tile wrapper. The released code hardcodes an FP16 visual-embedding cast even with `mixed_precision=fp32`; the single-line [`codiff-fp32.patch`](artifacts/full-image-codiff/codiff-fp32.patch) changes that cast to the selected weight dtype. This makes all learned weights/activations use the declared FP32 path, without changing trained tensors, tile settings or the scheduler. Native Gaussian latent-mask multiplication retains the release's float64 mask construction with float32 accumulation; learned network weights and inputs remain FP32.
+
+The worker uses isolated `diffusers==0.25.0`, `peft==0.9.0`, `huggingface_hub==0.25.0`, `transformers==4.48.3`, and `tokenizers==0.21.4`. The parent metrics retain the project environment, including Transformers 5.5.3. PyTorch/CUDA are shared. Downloads, dependency installs, caches, worker temporary files and raw output all live under `/mnt/projects/jpeg-restoration`; no new model download is stored on `/`. The worker environment is archived separately from the parent environment. Parameters count the complete loaded CaVE, UNet, VAE, projection and LoRA modules.
+
 ## Segmented-JVP verification
 
 The independent [`src/audit_jvp.py`](src/audit_jvp.py) audit compares the actual monolithic and segmented paths in fresh subprocesses, with identical weights, inputs/noise, and fixed `(r,t)=(0.2,0.7)`. It compares primal outputs, tangents, scalar adaptive MeanFlow-plus-severity loss, every named parameter gradient, and missing-gradient patterns. LPIPS is excluded.
@@ -163,7 +184,7 @@ The current [`jvp_public_cpu.json`](artifacts/matched-24-oct/jvp_public_cpu.json
 
 ```bash
 python src/audit_jvp.py \
-  --checkpoint checkpoints/matched/meanflow/meanflow_jpeg_qf5_20.pth \
+  --checkpoint /mnt/projects/jpeg-restoration/models/matched/meanflow/meanflow_jpeg_qf5_20.pth \
   --device cpu --dtype float32 --crop 32 --batch 1 --seeds 0 1 2 \
   --output outputs/jvp-audit.json
 ```

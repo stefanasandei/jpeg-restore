@@ -1,0 +1,118 @@
+{
+  "operation": "Verified existing copies; no new download and no inferred original acquisition date.",
+  "original_acquisition_records": "../matched-24-oct/assets.json",
+  "files": [
+    {
+      "file": "${STORAGE}/models/matched/fbcnn_color.pth",
+      "source_archive_file": "checkpoints/matched/fbcnn_color.pth",
+      "sha256": "8b0e4ef23d59cf7ac934a342cb31a17619e4fa4a0b3374a9d78c5174312387e8",
+      "size_bytes": 287755111,
+      "verified_utc": "2026-10-24T21:01:15.133446+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/jdec.pth",
+      "source_archive_file": "checkpoints/matched/jdec.pth",
+      "sha256": "ab71edd4351d69cb08628a8b1310ddb8ec36f5cb052695230bbdddae1441015b",
+      "size_bytes": 479446181,
+      "verified_utc": "2026-10-24T21:01:16.272747+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/promptcir/checkpoint/model_best.pth",
+      "source_archive_file": "checkpoints/matched/promptcir/checkpoint/model_best.pth",
+      "sha256": "728a2f3b9876b010c2c13386999baeb1a34023a3b2d6ded9c3419dc893ef6c47",
+      "size_bytes": 141076981,
+      "verified_utc": "2026-10-24T21:01:16.624667+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/meanflow/meanflow_jpeg_qf5_20.pth",
+      "source_archive_file": "checkpoints/matched/meanflow/meanflow_jpeg_qf5_20.pth",
+      "sha256": "fbb573706c64ae90da85e47d1ff3377734264142460770c54ebadc50a4ba4caa",
+      "size_bytes": 261352510,
+      "verified_utc": "2026-10-24T21:01:17.250960+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/clip-vit-base-patch16/config.json",
+      "source_archive_file": "checkpoints/matched/clip-vit-base-patch16/config.json",
+      "sha256": "eaf1c9089a8553c913d27ea66407f8bfc2be9989c80c9f331ddb3d63d4c5e8ad",
+      "size_bytes": 4104,
+      "verified_utc": "2026-10-24T21:01:17.252466+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/clip-vit-base-patch16/merges.txt",
+      "source_archive_file": "checkpoints/matched/clip-vit-base-patch16/merges.txt",
+      "sha256": "9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a",
+      "size_bytes": 524619,
+      "verified_utc": "2026-10-24T21:01:17.253395+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/clip-vit-base-patch16/preprocessor_config.json",
+      "source_archive_file": "checkpoints/matched/clip-vit-base-patch16/preprocessor_config.json",
+      "sha256": "910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd",
+      "size_bytes": 316,
+      "verified_utc": "2026-10-24T21:01:17.253630+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/clip-vit-base-patch16/pytorch_model.bin",
+      "source_archive_file": "checkpoints/matched/clip-vit-base-patch16/pytorch_model.bin",
+      "sha256": "ec89c7b09c749a60aae3c9cd910516f24b58214a7df060b48962d14c469cfbf0",
+      "size_bytes": 598641023,
+      "verified_utc": "2026-10-24T21:01:18.269464+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/clip-vit-base-patch16/special_tokens_map.json",
+      "source_archive_file": "checkpoints/matched/clip-vit-base-patch16/special_tokens_map.json",
+      "sha256": "f8c0d6c39aee3f8431078ef6646567b0aba7f2246e9c54b8b99d55c22b707cbf",
+      "size_bytes": 389,
+      "verified_utc": "2026-10-24T21:01:18.270474+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/clip-vit-base-patch16/tokenizer_config.json",
+      "source_archive_file": "checkpoints/matched/clip-vit-base-patch16/tokenizer_config.json",
+      "sha256": "3f74b6a4d97fee70b3b96921a687fc5e3f2fb583f5f81e7c178c0c22281beade",
+      "size_bytes": 905,
+      "verified_utc": "2026-10-24T21:01:18.270548+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/clip-vit-base-patch16/vocab.json",
+      "source_archive_file": "checkpoints/matched/clip-vit-base-patch16/vocab.json",
+      "sha256": "3f0c4f7d2086b61b38487075278ea9ed04edb53a03cbb045b86c27190fa8fb69",
+      "size_bytes": 961143,
+      "verified_utc": "2026-10-24T21:01:18.273094+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/torch-cache/hub/checkpoints/alexnet-owt-7be5be79.pth",
+      "source_archive_file": "checkpoints/matched/torch-cache/hub/checkpoints/alexnet-owt-7be5be79.pth",
+      "sha256": "7be5be791159472b1fbf3c69796f7cb30dca7ad8466c2df70058c37116cdee02",
+      "size_bytes": 244408911,
+      "verified_utc": "2026-10-24T21:01:18.864992+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/torch-cache/hub/checkpoints/vgg16-397923af.pth",
+      "source_archive_file": "checkpoints/matched/torch-cache/hub/checkpoints/vgg16-397923af.pth",
+      "sha256": "397923af8e79cdbb6a7127f12361acd7a2f83e06b05044ddf496e83de57a5bf0",
+      "size_bytes": 553433881,
+      "verified_utc": "2026-10-24T21:01:19.212129+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/torch-cache/hub/pyiqa/musiq_koniq_ckpt-e95806b9.pth",
+      "source_archive_file": "checkpoints/matched/torch-cache/hub/pyiqa/musiq_koniq_ckpt-e95806b9.pth",
+      "sha256": "e95806b9eae5f3814c410f574ba8e552362bd5bc63d758ed5b97860f5d6185aa",
+      "size_bytes": 108610983,
+      "verified_utc": "2026-10-24T21:01:19.482592+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/torch-cache/hub/pyiqa/ckpt_koniq10k.pt",
+      "source_archive_file": "checkpoints/matched/torch-cache/hub/pyiqa/ckpt_koniq10k.pt",
+      "sha256": "a207f8ab57322e6be38ff5c8d019301dc032b454bef21c3c9f9dbf7974eebff6",
+      "size_bytes": 543335435,
+      "verified_utc": "2026-10-24T21:01:20.868996+00:00"
+    },
+    {
+      "file": "${STORAGE}/models/matched/hub-cache/models--timm--vit_base_patch8_224.augreg2_in21k_ft_in1k/snapshots/907a22023d1c918aae6d7f340275616a25f7f2ff/model.safetensors",
+      "source_archive_file": "checkpoints/matched/hub-cache/models--timm--vit_base_patch8_224.augreg2_in21k_ft_in1k/snapshots/907a22023d1c918aae6d7f340275616a25f7f2ff/model.safetensors",
+      "sha256": "45333d3cd3366ed0f57e94b93655eeb8895b4610ddf2a5a7ca7b2410874ea0c9",
+      "size_bytes": 346321582,
+      "verified_utc": "2026-10-24T21:01:21.684091+00:00"
+    }
+  ]
+}

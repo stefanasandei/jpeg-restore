@@ -1,4 +1,6 @@
-# Matched evaluation evidence
+# Historical tiled comparison evidence
+
+**Superseded:** the current paper uses [full-image MeanFlow and CODiff records](../full-image-codiff/run). MeanFlow rows below came from the older external tile wrapper and do not enter current tables. The unchanged regression/JPEG rows are reused with their original provenance.
 
 This directory archives a fresh comparison of trained FBCNN, JDEC, PromptCIR, and MeanFlow (one/two updates), with the JPEG input as reference. No published score, historical ensemble result, or architectural timing proxy enters these results. The full protocol and reproduction commands are in [evaluation.md](../../evaluation.md).
 
