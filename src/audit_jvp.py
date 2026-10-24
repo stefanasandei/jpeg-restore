@@ -51,6 +51,9 @@ def compare(reference, candidate, rtol, atol):
         "cosine": dot / (reference_norm * candidate_norm) ** 0.5
         if reference_norm and candidate_norm else None,
         "max_absolute_error": maximum,
+        "reference_l2": reference_norm ** 0.5,
+        "candidate_l2": candidate_norm ** 0.5,
+        "absolute_l2_error": squared_error ** 0.5,
         "elements": count,
         "nonzero_reference_elements": nonzero,
     }
@@ -162,6 +165,7 @@ def main():
     report = {
         "environment": environment_metadata(torch.device(args.device)),
         "settings": vars(args),
+        "audit_script_sha256": file_identity(__file__, True)["sha256"],
         "checkpoint": file_identity(args.checkpoint, True) if args.checkpoint else None,
         "scope": {
             "inputs": "fixed synthetic RGB, identical noise and r=0.2/t=0.7 per method",
@@ -199,6 +203,8 @@ def main():
                 case[name] = compare(a if isinstance(a, dict) else {name: a},
                                      b if isinstance(b, dict) else {name: b},
                                      args.rtol, args.atol)
+            case["loss"]["reference_value"] = float(reference["loss"])
+            case["loss"]["candidate_value"] = float(candidate["loss"])
             report["cases"].append(case)
             print(json.dumps({"seed": seed, "gradients": case["gradients"]}), flush=True)
             del reference, candidate, records

@@ -21,3 +21,13 @@ roedunet*.pdf
 
 # Any hidden directory, at any depth (hidden files remain eligible)
 .*/
+
+# Private publication/development helpers
+/scripts/finish_paper.sh
+/scripts/run_matched_eval.sh
+/scripts/resume_matched_evaluation.py
+/scripts/finalize_manuscript.py
+/scripts/export_matched_evidence.py
+/scripts/record_matched_assets.py
+/scripts/render_paper_comparison.py
+/scripts/smoke_overfit.sh

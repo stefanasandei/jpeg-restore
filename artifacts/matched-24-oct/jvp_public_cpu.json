@@ -1,0 +1,282 @@
+{
+  "environment": {
+    "python": "3.14.4 (main, Apr  8 2026, 17:48:49) [GCC 15.2.1 20260209]",
+    "executable": "/usr/bin/python",
+    "platform": "Linux-7.0.5-arch1-1-x86_64-with-glibc2.43",
+    "packages": {
+      "torch": "2.13.0",
+      "torchvision": "0.28.0",
+      "torchmetrics": "1.8.2",
+      "pyiqa": "0.1.16",
+      "transformers": "5.5.3",
+      "numpy": "2.4.6",
+      "opencv-python": null
+    },
+    "device": "cpu",
+    "gpu": null,
+    "cuda": "13.0",
+    "nvidia_driver": null,
+    "cudnn": 92000,
+    "tf32_matmul": false,
+    "tf32_cudnn": true,
+    "torch_cpu_threads": 4,
+    "deterministic_algorithms": false,
+    "all_package_versions": {
+      "einops": "0.8.2",
+      "gdown": "5.2.1",
+      "huggingface_hub": "1.33.0",
+      "hydra-core": "1.3.3",
+      "matplotlib": "3.10.9",
+      "numpy": "2.4.6",
+      "omegaconf": "2.3.0",
+      "opencv-contrib-python": "4.11.0.86",
+      "pandas": "2.3.3",
+      "pillow": "12.2.0",
+      "pyiqa": "0.1.16",
+      "safetensors": "0.8.0",
+      "scipy": "1.17.1",
+      "timm": "1.0.22",
+      "torch": "2.13.0",
+      "torchmetrics": "1.8.2",
+      "torchvision": "0.28.0",
+      "tqdm": "4.67.3",
+      "transformers": "5.5.3"
+    },
+    "git_revision": "5534b4c15e28b4cd611b2af2e327ee031a627b25",
+    "audit_reporting_modified_from_recorded_head": true
+  },
+  "settings": {
+    "checkpoint": "checkpoints/matched/meanflow/meanflow_jpeg_qf5_20.pth",
+    "device": "cpu",
+    "dtype": "float32",
+    "crop": 32,
+    "batch": 1,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "threads": 4,
+    "rtol": 0.0001,
+    "atol": 1e-06,
+    "smoke": false,
+    "output": "outputs/jvp-public-checkpoint.json",
+    "method": null,
+    "seed": 0,
+    "worker_output": null
+  },
+  "audit_script_sha256": "f3be98ad5a19b28f6d254765425ccde0b013fb27ce3e596cb6c0e1c6f1e233db",
+  "checkpoint": {
+    "path": "checkpoints/matched/meanflow/meanflow_jpeg_qf5_20.pth",
+    "size_bytes": 261352510,
+    "sha256": "fbb573706c64ae90da85e47d1ff3377734264142460770c54ebadc50a4ba4caa"
+  },
+  "scope": {
+    "inputs": "fixed synthetic RGB, identical noise and r=0.2/t=0.7 per method",
+    "loss": "adaptive MeanFlow plus severity regression; LPIPS excluded",
+    "gradients": "all named parameters, including None/non-None pattern",
+    "memory": "total process CUDA allocated/reserved peaks after reset; includes resident model/inputs and loss forward/backward; no optimizer constructed or stepped",
+    "timing": "one synchronized loss forward/backward; diagnostic, not throughput benchmark",
+    "claim": "finite test cases only; not proof or reconstruction of historical Table IV memory values"
+  },
+  "cases": [
+    {
+      "seed": 0,
+      "measurements": {
+        "jvp": {
+          "elapsed_forward_backward_ms": 322.55628800339764,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        },
+        "rcm": {
+          "elapsed_forward_backward_ms": 291.8244920001598,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        }
+      },
+      "primal": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 61.56785649622343,
+        "candidate_l2": 61.56785649622343,
+        "absolute_l2_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "tangent": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 4106.957940097187,
+        "candidate_l2": 4106.957940097187,
+        "absolute_l2_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "loss": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 1.0299532413482666,
+        "candidate_l2": 1.0299532413482666,
+        "absolute_l2_error": 0.0,
+        "elements": 1,
+        "nonzero_reference_elements": 1,
+        "reference_value": 1.0299532413482666,
+        "candidate_value": 1.0299532413482666
+      },
+      "gradients": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 1.4322157090445922,
+        "candidate_l2": 1.4322157090445922,
+        "absolute_l2_error": 0.0,
+        "elements": 65323201,
+        "nonzero_reference_elements": 59195713
+      }
+    },
+    {
+      "seed": 1,
+      "measurements": {
+        "jvp": {
+          "elapsed_forward_backward_ms": 295.4659700044431,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        },
+        "rcm": {
+          "elapsed_forward_backward_ms": 293.8750449975487,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        }
+      },
+      "primal": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 62.701260308502704,
+        "candidate_l2": 62.701260308502704,
+        "absolute_l2_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "tangent": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 4185.842869868596,
+        "candidate_l2": 4185.842869868596,
+        "absolute_l2_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "loss": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 1.0292208194732666,
+        "candidate_l2": 1.0292208194732666,
+        "absolute_l2_error": 0.0,
+        "elements": 1,
+        "nonzero_reference_elements": 1,
+        "reference_value": 1.0292208194732666,
+        "candidate_value": 1.0292208194732666
+      },
+      "gradients": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 1.1683033577739799,
+        "candidate_l2": 1.1683033577739799,
+        "absolute_l2_error": 0.0,
+        "elements": 65323201,
+        "nonzero_reference_elements": 59022337
+      }
+    },
+    {
+      "seed": 2,
+      "measurements": {
+        "jvp": {
+          "elapsed_forward_backward_ms": 296.89184200105956,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        },
+        "rcm": {
+          "elapsed_forward_backward_ms": 294.37057099858066,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        }
+      },
+      "primal": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 57.89259461013994,
+        "candidate_l2": 57.89259461013994,
+        "absolute_l2_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "tangent": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 3413.7257111322715,
+        "candidate_l2": 3413.7257111322715,
+        "absolute_l2_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "loss": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 1.032939076423645,
+        "candidate_l2": 1.032939076423645,
+        "absolute_l2_error": 0.0,
+        "elements": 1,
+        "nonzero_reference_elements": 1,
+        "reference_value": 1.032939076423645,
+        "candidate_value": 1.032939076423645
+      },
+      "gradients": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "reference_l2": 1.152861870772282,
+        "candidate_l2": 1.152861870772282,
+        "absolute_l2_error": 0.0,
+        "elements": 65323201,
+        "nonzero_reference_elements": 59024065
+      }
+    }
+  ],
+  "passed": true,
+  "recorded_utc": "2026-10-24T19:05:21.286183+00:00",
+  "source_note": "The exact executed audit file is identified by audit_script_sha256. Reporting was extended locally to retain norms and scalar values; model, loss and JVP implementations were unchanged."
+}

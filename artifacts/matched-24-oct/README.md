@@ -31,8 +31,8 @@ Hashes identify this evidence; they do not imply that downloads or historical ex
 
 Public records use portable path placeholders and retain only evaluation dependency versions. The export preserves numerical results, cryptographic identities, seeds, and all timing samples; original local records remain under ignored `outputs/`. Its transformation record identifies the normalization explicitly.
 
-## Complete comparison and local paper build
+## Independent reproduction
 
-`bash scripts/finish_paper.sh` completes the full six-configuration, three-dataset, three-QF table and the matched 512²/1024² timings. It reuses compatible per-image records and measures all missing cases. The final `run/` is exported only after all 4,122 cases and 12 timing configurations pass validation; partial subsets do not supply final paper cells. Every dataset table includes FBCNN, JDEC, PromptCIR and both MeanFlow schedules, plus the JPEG reference. No model-versus-JPEG-only results table is emitted.
+The complete comparison has 4,122 cases, 54 quality summaries and 12 timing configurations. Reproduce it with the reader-facing commands in [evaluation.md](../../evaluation.md); validate the reports with `python scripts/validate_matched_run.py artifacts/matched-24-oct/run`. Every dataset compares FBCNN, JDEC, PromptCIR, both MeanFlow schedules and the JPEG reference.
 
-Raw originals and run logs remain under ignored `outputs/matched-completion/`. Public paths are normalized and installed-package inventories are limited to evaluation dependencies. `scripts/finalize_manuscript.py` refuses incomplete evidence, empty numeric cells, missing reported values, broken resource links, unresolved references, or a manuscript exceeding five pages. The PDF and manuscript remain local-only.
+`jvp_public_cpu.json` records the current public-checkpoint CPU audit, including scalar losses, tangent/gradient norms, nonzero gradient counts and exact observed differences. The local paper reports these substantive values instead of an error-only table.

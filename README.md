@@ -64,7 +64,7 @@ At LIVE-1 QF10, two-update MeanFlow obtains LPIPS **0.1622** versus **0.2301** f
 See [complete validated records](artifacts/matched-24-oct/run) and [reproduction protocol](evaluation.md). Paper PDFs and manuscript sources remain local.
 <!-- MATCHED_RESULTS_END -->
 
-The independent [JVP audit](src/audit_jvp.py) and [CPU records](artifacts/roedunet-24-oct/jvp_trained_cpu.json) compare outputs, tangents, losses, and parameter gradients on the trained checkpoint. These bounded CPU checks do not establish historical GPU memory reductions.
+The independent [JVP audit](src/audit_jvp.py) and [CPU records](artifacts/matched-24-oct/jvp_public_cpu.json) compare outputs, tangents, losses, and parameter gradients on the trained checkpoint. These bounded CPU checks do not establish historical GPU memory reductions.
 
 ## 📜 Citation
 

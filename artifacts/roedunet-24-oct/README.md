@@ -8,7 +8,7 @@ Manuscript sources and paper PDFs are local-only and excluded from Git. Full pro
 
 `quality_table.csv` transcribes Table I, including per-row provenance. Per the author's clarification, all methods except SODiff were evaluated locally; SODiff quality scores come from its paper. `system_table.csv` transcribes the reported system summary, with the SD 2.1 architectural proxy labeled separately. These files preserve reported aggregate values; they are not original raw evaluation records, independent reruns, or evidence of checkpoint-level SODiff timing.
 
-The previous Figure 1 was generated from these historical CSVs. The current `scripts/render_paper_comparison.py` requires a complete validated matched run and does not accept these transcribed summaries. Its hollow SODiff-quality/proxy-time point is illustrative. No frontier or SODiff speedup is established by that pairing. The original one-update point is omitted because this figure uses the operating points tabulated in the revised paper.
+The previous Figure 1 was generated from these historical CSVs. The current plotting entry point consumes measured report files after validation; these historical transcriptions do not supply the current comparison. Its hollow SODiff-quality/proxy-time point is illustrative. No frontier or SODiff speedup is established by that pairing. The original one-update point is omitted because this figure uses the operating points tabulated in the revised paper.
 
 ## New JVP verification
 

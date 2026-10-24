@@ -6,32 +6,9 @@ The revised comparison uses one evaluation harness and trained checkpoints for *
 
 The full results are complete and validated in [`artifacts/matched-24-oct/run`](artifacts/matched-24-oct/run): **4,122 image cases, 54 quality summaries, and 12 timing configurations**. Existing local partial records remain under ignored `outputs/` and are reused only after source, checkpoint, metric/native asset, environment, image/JPEG, and seed checks. Historical transcriptions under `artifacts/roedunet-24-oct` do not fill any final comparison cell.
 
-## Rebuild the paper without GPU work
+## Reader entry points
 
-The completed measurements can be used directly:
-
-```bash
-python scripts/finalize_manuscript.py
-```
-
-The build uses a relative BibTeX output path compatible with TeX's `openout_any=p` policy. The efficiency-table verification checks its five displayed restoration systems; the JPEG identity reference remains in the raw reports and quality table.
-
-## Complete or resume evaluation and build the paper
-
-Run outside the sandbox on the same RTX 3090 workstation:
-
-```bash
-cd /path/to/jpeg-restore
-bash scripts/finish_paper.sh
-```
-
-All image cases and timing configurations are now complete. The command reuses compatible completed cases or measures missing cases using the existing evaluator, recomputes all aggregates from individual images, validates the full 29/100/100 image cohorts for every method/QF, renders the original three-dataset comparison structure, and builds `roedunet-24-oct.pdf` locally. It produces no JPEG-only comparison table and never substitutes published or historical summaries.
-
-The final source template is local-only at `manuscript/full-template.tex`; the authoritative build directory is `../roedunet`. The pipeline checks the IEEE page limit, references, page-one links, and the presence of every reported quality value before replacing the PDF. All paper files remain excluded from Git. The superseded narrowed PDF is retained locally as `roedunet-24-oct-superseded.pdf`.
-
-Use `PAPER_DRY_RUN=1 bash scripts/finish_paper.sh` for a read-only preflight. The launcher prevents concurrent instances. If interrupted, rerun the same command: completed per-image results are retained, and child GPU processes are stopped on cancellation. Logs and raw source-run lineage stay in `outputs/matched-completion/`. Only compatible measured cases are combined; cohort summaries are always recomputed over the full image lists, rather than averaging subset summaries.
-
-The final comparison includes the three trained baselines with pinned checkpoints and executable adapters. DiffBIR*, SUPIR, and SODiff are not filled from their papers or from architectural proxies. The manuscript bounds its claims to the actually measured trained methods.
+The scripts directory contains only training, evaluation, and benchmark launchers, pinned dependency/checkpoint preparation, and independent result validation. Training and restoration code are in `src/`; plotting is available through `src/evaluation/plots.py`. Publication automation and one-off development helpers are kept locally outside the tracked source tree.
 
 ## Run on a GPU
 
@@ -39,7 +16,13 @@ Use the project dependencies in `requirements.txt`, a CUDA-enabled PyTorch insta
 
 ```bash
 python scripts/prepare_matched_eval.py
-bash scripts/run_matched_eval.sh outputs/matched-reproduction \
+export PYTHONPATH="$PWD/checkpoints/matched/python-deps:$PWD/checkpoints/matched/dct-extension/dct_manip${PYTHONPATH:+:$PYTHONPATH}"
+export TORCH_HOME="$PWD/checkpoints/matched/torch-cache"
+export HF_HUB_CACHE="$PWD/checkpoints/matched/hub-cache"
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
+bash scripts/eval.sh --config-name evaluation_matched \
+  eval.output_dir=outputs/matched-reproduction \
   'dataset.live1=[/path/to/LIVE1]' \
   'dataset.urban100=[/path/to/Urban100]' \
   'dataset.div2k_val=[/path/to/DIV2K_valid_HR]'
@@ -49,7 +32,7 @@ Preparation checks out the official source revisions, downloads the trained weig
 
 Use a fresh output directory. Dataset paths may change: image content, dataset name, QF, and the base seed determine the sampling seed. Before comparing a reproduction, compare its image and encoded-JPEG hashes with the archived cohort. Different codec builds can produce different JPEG bytes even at the same QF.
 
-Preparation also verifies the recorded TorchMetrics package weights and populates isolated metric caches with the archived AlexNet, VGG16, MUSIQ, MANIQA, and pinned timm ViT weights. `run_matched_eval.sh` selects those caches and sets `HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1`. Its preparation log distinguishes local copies from downloads. The published run uses these isolated caches. Public path placeholders identify their roles without disclosing local account paths. `metric-cache-preparation.json` records the verified local copies that populated them; the preparation and asset records distinguish those copies from fresh downloads. Do not run another GPU workload while collecting latency.
+Preparation also verifies the recorded TorchMetrics package weights and populates isolated metric caches with the archived AlexNet, VGG16, MUSIQ, MANIQA, and pinned timm ViT weights. The environment variables above select those caches and disable Hub downloads during execution. Its preparation log distinguishes local copies from downloads. The published run uses these isolated caches. Public path placeholders identify their roles without disclosing local account paths. `metric-cache-preparation.json` records the verified local copies that populated them; the preparation and asset records distinguish those copies from fresh downloads. Do not run another GPU workload while collecting latency.
 
 For a short functionality check, use `eval.max_images=1` and fewer timing repetitions. Such a run is deliberately rejected by the publication validator and cannot supply paper tables. The runner writes results before validation, so a failed validation retains diagnostic evidence.
 
@@ -122,7 +105,7 @@ MeanFlow weights: Hub revision `33315831b6b342d3b8ddbdc70aa11cb84e55c66b`; SHA-2
 
 JDEC's released checkpoint names its encoder `swinv2_rgb_nomore_deepir_rgbver`; the adapter maps that legacy name to the official `swinv2_group_embedded` factory used by its released training configuration. Encoder arguments and weights remain unchanged, with strict state-dictionary loading. Worker namespace isolation accommodates the upstream repos' module layout. The coefficient extension uses the pinned official `dct_manip.cpp`, `-O1 -std=c++20`, and `-ljpeg`; compiler and linked-library identity belong to the recorded build environment.
 
-The public evidence export normalizes personal/workspace/dataset path prefixes and limits installed-package inventory to evaluation dependencies. Numeric results, input/checkpoint/source hashes, seeds, and raw timing samples are preserved; full original records stay locally under ignored `outputs/`. `scripts/export_matched_evidence.py` validates both copies and records the transformations and original file hashes.
+The public evidence export normalizes personal/workspace/dataset path prefixes and limits installed-package inventory to evaluation dependencies. Numeric results, input/checkpoint/source hashes, seeds, and raw timing samples are preserved; full original records stay locally under ignored `outputs/`. The public export records its normalization steps and original file hashes in `run/public-export.json`.
 
 The full aggregate manifest also identifies the source run of every reused/measured case and the SHA-256 of each original run manifest.
 
@@ -176,14 +159,15 @@ Optional DiffBIR, SUPIR, and Rectified Flow adapters remain available in the gen
 
 The independent [`src/audit_jvp.py`](src/audit_jvp.py) audit compares the actual monolithic and segmented paths in fresh subprocesses, with identical weights, inputs/noise, and fixed `(r,t)=(0.2,0.7)`. It compares primal outputs, tangents, scalar adaptive MeanFlow-plus-severity loss, every named parameter gradient, and missing-gradient patterns. LPIPS is excluded.
 
-The archived [`jvp_trained_cpu.json`](artifacts/roedunet-24-oct/jvp_trained_cpu.json) uses the full trained 65,323,201-parameter checkpoint, CPU FP32, batch one, 32×32 synthetic RGB, and seeds 0/1/2. All recorded differences are zero, with nonzero reference gradients for more than 59 million parameter elements in each case. Checkpoint/script hashes are included; `rtol=1e-4`, `atol=1e-6` are acceptance tolerances, not the observed errors. This verifies those cases, not every input, precision, auxiliary loss, or hardware configuration.
+The current [`jvp_public_cpu.json`](artifacts/matched-24-oct/jvp_public_cpu.json) verifies the published inference checkpoint: all 65,323,201 parameters, CPU FP32, batch one, 32×32 synthetic RGB, and seeds 0/1/2. It records actual scalar loss values, reference/candidate L2 norms, nonzero gradient counts, and absolute/relative differences. Monolithic and segmented values agree exactly in these cases. Each case contains about 59 million nonzero gradient entries, so zero differences are a nontrivial numerical result. The checkpoint and exact audit-script SHA-256 are included. Earlier checks remain archived under `artifacts/roedunet-24-oct`.
 
 ```bash
-python src/audit_jvp.py --checkpoint /path/to/rela_dit_meanflow_qf5_20.pt \
+python src/audit_jvp.py \
+  --checkpoint checkpoints/matched/meanflow/meanflow_jpeg_qf5_20.pth \
   --device cpu --dtype float32 --crop 32 --batch 1 --seeds 0 1 2 \
-  --output outputs/jvp-trained-cpu.json
+  --output outputs/jvp-audit.json
 ```
 
-The audit checkpoint is the full training checkpoint, rather than the inference-only export. For a fresh CUDA audit use `--device cuda --crop 128 --batch 32`; memory requirements may exceed the available GPU. Each method/seed uses a fresh process. Following its separate tangent comparison, the audit releases that graph, clears the CUDA cache, and resets peak statistics. Allocated/reserved peaks cover loss forward/backward, including resident model/input storage and parameter gradients; no optimizer/state/step is included. CPU GPU-memory fields are `null`.
+The loss contains adaptive MeanFlow and severity regression; LPIPS is excluded. This verifies the recorded finite cases, not every input, precision, or hardware configuration. Each method/seed uses a fresh process. CUDA memory instrumentation includes resident model/inputs and forward/backward gradients, excludes optimizer state/steps, and reports null on CPU. Diagnostic single-pass timings are not throughput benchmarks.
 
 The archived audit was CPU-only. The historical 15.75→6.16 GiB memory and associated speed comparison are withdrawn because their accounting boundaries were not retained. CPU gradient agreement does not validate those GPU memory values.
