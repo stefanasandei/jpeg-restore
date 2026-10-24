@@ -9,7 +9,7 @@
 
 ## ⚡ Highlights
 
-* **Quality–efficiency Pareto:** perception metrics close to SOTA, while being ~5x faster than SODiff
+* **Quality and efficiency:** competitive perceptual quality with 8.05 images/s at 1024×1024 on the reported RTX 3090 configuration
 * **Wavelet-Domain Processing:** Replaces heavy learned VAEs with a **two-level 2D Haar transform**, avoiding lossy compression and latency bottlenecks.
 * **Linear DiT:** a 65M-parameters model trained from scratch, with [Rank Enhanced Linear Attention](https://www.alphaxiv.org/abs/2505.16157) in every block
 * **1–2 Step Inference:** Trained with **Mean Flows** for generation, without multi-stage distillation pipelines.
@@ -58,7 +58,7 @@ See [evaluation.md](./evaluation.md) for full-image quality metrics, performance
 
 ## 📊 Benchmark Results
 
-Check our paper for the full results. Current evaluations use 2-step inference for our model. Metrics at QF20:
+Check our paper for the full results. Reported results use 2-step inference for our model. SODiff quality scores are quoted from its paper; its checkpoint was not evaluated locally. Metrics at QF20:
 
 | Dataset   | Method |  LPIPS ↓   |  DISTS ↓   |  MUSIQ ↑  |  MANIQA ↑  | CLIPIQA ↑  |
 | --------- | ------ | :--------: | :--------: | :-------: | :--------: | :--------: |
@@ -74,10 +74,13 @@ System-level efficiency at 1024×1024, batch size 1, single RTX 3090:
 | Method | Params (M) |  NFE  | Latency (s) | Throughput (img/s) |
 | ------ | :--------: | :---: | :---------: | :----------------: |
 | FBCNN  |    70.1    |   1   |    0.275    |        3.63        |
-| SODiff |    1288    |   1   |    0.610    |        1.64        |
+| SD 2.1 architecture proxy | 1288 | 1 | 0.610 | 1.64 |
 | SUPIR  |    4490    |  50   |    48.66    |       0.0206       |
 | *Ours* |  **65.3**  | **2** |  **0.124**  |      **8.05**      |
-| *Ours* |  **65.3**  | **1** |  **0.118**  |     **17.35**      |
+
+The SD 2.1 proxy reconstructs the SODiff architecture without its weights; it is not measured SODiff restoration latency. The original proxy configuration and raw repetitions are not archived. No measured SODiff speedup is claimed. See [evaluation provenance and runnable protocols](evaluation.md) and the [revised IEEE paper](roedunet-24-oct.pdf).
+
+The [JVP audit](src/audit_jvp.py) and [archived results](artifacts/roedunet-24-oct) compare actual outputs, tangents, losses, and parameter gradients on the trained checkpoint. The new CPU checks do not establish historical GPU memory reductions.
 
 > *Note:* Pretrained large-scale t2i diffusion models remain stronger under extreme compression, due to their texture & patterns knowledge. This model is optimized for low latency, edge environments where high throughput is critical.
 

@@ -1,0 +1,211 @@
+{
+  "environment": {
+    "python": "3.14.4 (main, Apr  8 2026, 17:48:49) [GCC 15.2.1 20260209]",
+    "executable": "/usr/bin/python",
+    "platform": "Linux-7.0.5-arch1-1-x86_64-with-glibc2.43",
+    "packages": {
+      "torch": "2.13.0",
+      "torchvision": "0.28.0",
+      "torchmetrics": "1.8.2",
+      "pyiqa": "0.1.16",
+      "transformers": "5.5.3",
+      "numpy": "2.4.6",
+      "opencv-python": null
+    },
+    "device": "cpu",
+    "gpu": null,
+    "cuda": "13.0",
+    "cudnn": 92000,
+    "git_revision": "592ed1837e324bd646373e39fcc5a567981ae051"
+  },
+  "settings": {
+    "checkpoint": "rela_dit_meanflow_qf5_20.pt",
+    "device": "cpu",
+    "dtype": "float32",
+    "crop": 32,
+    "batch": 1,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "threads": 4,
+    "rtol": 0.0001,
+    "atol": 1e-06,
+    "smoke": false,
+    "output": "jvp_trained_cpu.json",
+    "method": null,
+    "seed": 0,
+    "worker_output": null
+  },
+  "checkpoint": {
+    "path": "rela_dit_meanflow_qf5_20.pt",
+    "size_bytes": 784134451,
+    "sha256": "27b3ffde828ae850d48721d4c8e9fe8039521871688fbcec69cf8c31f9eb393a"
+  },
+  "scope": {
+    "inputs": "fixed synthetic RGB, identical noise and r=0.2/t=0.7 per method",
+    "loss": "adaptive MeanFlow plus severity regression; LPIPS excluded",
+    "gradients": "all named parameters, including None/non-None pattern",
+    "memory": "total process CUDA allocated/reserved peaks after reset; includes resident model/inputs and loss forward/backward; no optimizer constructed or stepped",
+    "timing": "one synchronized loss forward/backward; diagnostic, not throughput benchmark",
+    "claim": "finite test cases only; not proof or reconstruction of historical Table IV memory values"
+  },
+  "cases": [
+    {
+      "seed": 0,
+      "measurements": {
+        "jvp": {
+          "elapsed_forward_backward_ms": 275.77403300165315,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        },
+        "rcm": {
+          "elapsed_forward_backward_ms": 274.34626600006595,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        }
+      },
+      "primal": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "tangent": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "loss": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 1,
+        "nonzero_reference_elements": 1
+      },
+      "gradients": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 65323201,
+        "nonzero_reference_elements": 59195713
+      }
+    },
+    {
+      "seed": 1,
+      "measurements": {
+        "jvp": {
+          "elapsed_forward_backward_ms": 274.0492430020822,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        },
+        "rcm": {
+          "elapsed_forward_backward_ms": 269.6366019990819,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        }
+      },
+      "primal": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "tangent": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "loss": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 1,
+        "nonzero_reference_elements": 1
+      },
+      "gradients": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 65323201,
+        "nonzero_reference_elements": 59022337
+      }
+    },
+    {
+      "seed": 2,
+      "measurements": {
+        "jvp": {
+          "elapsed_forward_backward_ms": 275.2265189992613,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        },
+        "rcm": {
+          "elapsed_forward_backward_ms": 272.9876810008136,
+          "baseline_allocated_gib": null,
+          "peak_allocated_gib": null,
+          "peak_reserved_gib": null,
+          "parameters": 65323201
+        }
+      },
+      "primal": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "tangent": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 3072,
+        "nonzero_reference_elements": 3072
+      },
+      "loss": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 1,
+        "nonzero_reference_elements": 1
+      },
+      "gradients": {
+        "passed": true,
+        "relative_l2": 0.0,
+        "cosine": 1.0,
+        "max_absolute_error": 0.0,
+        "elements": 65323201,
+        "nonzero_reference_elements": 59024065
+      }
+    }
+  ],
+  "passed": true,
+  "audit_script_sha256": "898e3cdd2ba7d543b050f5e07d40307622015dab4309b8f741ab7aa7f6673356"
+}

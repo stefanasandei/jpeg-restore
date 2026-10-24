@@ -1,0 +1,7 @@
+model,parameters_m,nfe,latency_s,throughput_img_s,provenance
+FBCNN,70.1,1,0.275,3.63,author_reported_local_measurement
+JDEC,38.9,1,0.86,1.16,author_reported_local_measurement
+PromptCIR,34.75,64,27.97,0.0358,author_reported_local_measurement
+SUPIR,4490,50,48.66,0.0206,author_reported_local_measurement
+SD2.1 proxy,1288,1,0.61,1.64,architectural_proxy_no_sodiff_weights
+Ours,65.32,2,0.1242,8.05,author_reported_local_measurement
